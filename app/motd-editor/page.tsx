@@ -1,15 +1,33 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'motion/react';
-import { ArrowLeft, Copy, CheckCircle2, Download, Palette, Type, Sparkles } from 'lucide-react';
+import {
+  ArrowLeft,
+  Copy,
+  CheckCircle2,
+  Download,
+  Palette,
+  Type,
+  Sparkles,
+  AlignCenter,
+  RotateCcw,
+  Hash,
+  Wand2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Toggle } from '@/components/ui/toggle';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import { parseColorCodes } from '@/lib/minecraft';
 import { GradientBackground } from '@/components/animate-ui/components/backgrounds/gradient';
 
@@ -28,76 +46,159 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
+// Minecraft color palette
+const COLORS = [
+  { name: 'Black', code: '§0', hex: '#000000' },
+  { name: 'Dark Blue', code: '§1', hex: '#0000AA' },
+  { name: 'Dark Green', code: '§2', hex: '#00AA00' },
+  { name: 'Dark Aqua', code: '§3', hex: '#00AAAA' },
+  { name: 'Dark Red', code: '§4', hex: '#AA0000' },
+  { name: 'Dark Purple', code: '§5', hex: '#AA00AA' },
+  { name: 'Gold', code: '§6', hex: '#FFAA00' },
+  { name: 'Gray', code: '§7', hex: '#AAAAAA' },
+  { name: 'Dark Gray', code: '§8', hex: '#555555' },
+  { name: 'Blue', code: '§9', hex: '#5555FF' },
+  { name: 'Green', code: '§a', hex: '#55FF55' },
+  { name: 'Aqua', code: '§b', hex: '#55FFFF' },
+  { name: 'Red', code: '§c', hex: '#FF5555' },
+  { name: 'Light Purple', code: '§d', hex: '#FF55FF' },
+  { name: 'Yellow', code: '§e', hex: '#FFFF55' },
+  { name: 'White', code: '§f', hex: '#FFFFFF' },
+];
+
+// Format codes
+const FORMATS = [
+  { name: 'Bold', code: '§l', icon: 'B', description: 'Make text bold' },
+  { name: 'Italic', code: '§o', icon: 'I', description: 'Make text italic' },
+  { name: 'Underline', code: '§n', icon: 'U', description: 'Underline text' },
+  { name: 'Strikethrough', code: '§m', icon: 'S', description: 'Strike through text' },
+  { name: 'Obfuscated', code: '§k', icon: '✨', description: 'Random characters effect' },
+  { name: 'Reset', code: '§r', icon: '↺', description: 'Reset all formatting' },
+];
+
 export default function MotdEditorPage() {
   const router = useRouter();
-  const [motdText, setMotdText] = useState('');
+  const searchParams = useSearchParams();
+  const [line1, setLine1] = useState('');
+  const [line2, setLine2] = useState('');
+  const [centerLines, setCenterLines] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeLine, setActiveLine] = useState<1 | 2>(1);
+  
+  // Gradient tool state
+  const [gradientStart, setGradientStart] = useState('#FF5555');
+  const [gradientEnd, setGradientEnd] = useState('#FFFF55');
+  const [gradientText, setGradientText] = useState('');
+  
+  // Custom hex color input
+  const [customHex, setCustomHex] = useState('#FFFFFF');
 
-  const colors = [
-    { value: 'black', label: 'Black', code: '§0', hex: '#000000' },
-    { value: 'dark_blue', label: 'Dark Blue', code: '§1', hex: '#0000AA' },
-    { value: 'dark_green', label: 'Dark Green', code: '§2', hex: '#00AA00' },
-    { value: 'dark_aqua', label: 'Dark Aqua', code: '§3', hex: '#00AAAA' },
-    { value: 'dark_red', label: 'Dark Red', code: '§4', hex: '#AA0000' },
-    { value: 'dark_purple', label: 'Dark Purple', code: '§5', hex: '#AA00AA' },
-    { value: 'gold', label: 'Gold', code: '§6', hex: '#FFAA00' },
-    { value: 'gray', label: 'Gray', code: '§7', hex: '#AAAAAA' },
-    { value: 'dark_gray', label: 'Dark Gray', code: '§8', hex: '#555555' },
-    { value: 'blue', label: 'Blue', code: '§9', hex: '#5555FF' },
-    { value: 'green', label: 'Green', code: '§a', hex: '#55FF55' },
-    { value: 'aqua', label: 'Aqua', code: '§b', hex: '#55FFFF' },
-    { value: 'red', label: 'Red', code: '§c', hex: '#FF5555' },
-    { value: 'light_purple', label: 'Light Purple', code: '§d', hex: '#FF55FF' },
-    { value: 'yellow', label: 'Yellow', code: '§e', hex: '#FFFF55' },
-    { value: 'white', label: 'White', code: '§f', hex: '#FFFFFF' },
-  ];
+  // Load MOTD from URL query params if present
+  useEffect(() => {
+    const motd = searchParams.get('motd');
+    if (motd) {
+      const lines = motd.split('\n');
+      setLine1(lines[0] || '');
+      setLine2(lines[1] || '');
+    }
+  }, [searchParams]);
 
-  const formatCodes = [
-    { value: 'bold', label: 'Bold', code: '§l', icon: '𝐁' },
-    { value: 'italic', label: 'Italic', code: '§o', icon: '𝐼' },
-    { value: 'underline', label: 'Underline', code: '§n', icon: 'U̲' },
-    { value: 'strikethrough', label: 'Strike', code: '§m', icon: 'S̶' },
-    { value: 'obfuscated', label: 'Magic', code: '§k', icon: '✨' },
-    { value: 'reset', label: 'Reset', code: '§r', icon: '↺' },
-  ];
-
-  const templates = [
-    {
-      name: 'Classic Welcome',
-      text: '§6Welcome to §bMy Server§r\n§aHave fun playing!',
-    },
-    {
-      name: 'Premium Server',
-      text: '§l§d✦ §5PREMIUM SERVER §d✦§r\n§f§oJoin the adventure!',
-    },
-    {
-      name: 'Survival',
-      text: '§a§l⚔ SURVIVAL SERVER ⚔§r\n§7Version §e1.20 §7| §bOnline §724/7',
-    },
-    {
-      name: 'Mini Games',
-      text: '§c§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬§r\n§6§l  MINI GAMES  §r\n§c§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬',
-    },
-  ];
+  const getCurrentLine = () => activeLine === 1 ? line1 : line2;
+  const setCurrentLine = (value: string) => {
+    if (activeLine === 1) setLine1(value);
+    else setLine2(value);
+  };
 
   const insertCode = (code: string) => {
-    setMotdText((prev) => prev + code);
+    const currentText = getCurrentLine();
+    setCurrentLine(currentText + code);
+  };
+
+  const insertColorAtCursor = (code: string) => {
+    insertCode(code);
+  };
+
+  const hexToMinecraftColor = (hex: string): string => {
+    // Find closest Minecraft color or return the hex as RGB format
+    const closest = COLORS.reduce((prev, curr) => {
+      const prevDist = colorDistance(hex, prev.hex);
+      const currDist = colorDistance(hex, curr.hex);
+      return currDist < prevDist ? curr : prev;
+    });
+    return closest.code;
+  };
+
+  const colorDistance = (hex1: string, hex2: string): number => {
+    const r1 = parseInt(hex1.slice(1, 3), 16);
+    const g1 = parseInt(hex1.slice(3, 5), 16);
+    const b1 = parseInt(hex1.slice(5, 7), 16);
+    const r2 = parseInt(hex2.slice(1, 3), 16);
+    const g2 = parseInt(hex2.slice(3, 5), 16);
+    const b2 = parseInt(hex2.slice(5, 7), 16);
+    return Math.sqrt(Math.pow(r1 - r2, 2) + Math.pow(g1 - g2, 2) + Math.pow(b1 - b2, 2));
+  };
+
+  const interpolateColor = (color1: string, color2: string, factor: number): string => {
+    const r1 = parseInt(color1.slice(1, 3), 16);
+    const g1 = parseInt(color1.slice(3, 5), 16);
+    const b1 = parseInt(color1.slice(5, 7), 16);
+    const r2 = parseInt(color2.slice(1, 3), 16);
+    const g2 = parseInt(color2.slice(3, 5), 16);
+    const b2 = parseInt(color2.slice(5, 7), 16);
+
+    const r = Math.round(r1 + (r2 - r1) * factor);
+    const g = Math.round(g1 + (g2 - g1) * factor);
+    const b = Math.round(b1 + (b2 - b1) * factor);
+
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+  };
+
+  const applyGradient = () => {
+    if (!gradientText) return;
+    
+    let result = '';
+    for (let i = 0; i < gradientText.length; i++) {
+      const factor = i / (gradientText.length - 1 || 1);
+      const color = interpolateColor(gradientStart, gradientEnd, factor);
+      const minecraftColor = hexToMinecraftColor(color);
+      result += minecraftColor + gradientText[i];
+    }
+    
+    setCurrentLine(getCurrentLine() + result);
+    setGradientText('');
+  };
+
+  const centerText = (text: string): string => {
+    const maxLength = 60;
+    const stripped = text.replace(/§[0-9a-fk-or]/gi, '');
+    const spaces = Math.max(0, Math.floor((maxLength - stripped.length) / 2));
+    return ' '.repeat(spaces) + text;
+  };
+
+  const getFullMOTD = () => {
+    const l1 = centerLines ? centerText(line1) : line1;
+    const l2 = centerLines ? centerText(line2) : line2;
+    return `${l1}\n${l2}`;
   };
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(motdText);
+    navigator.clipboard.writeText(getFullMOTD());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const downloadAsText = () => {
-    const blob = new Blob([motdText], { type: 'text/plain' });
+    const blob = new Blob([getFullMOTD()], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = 'motd.txt';
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const getCharCount = (text: string) => {
+    return text.replace(/§[0-9a-fk-or]/gi, '').length;
   };
 
   return (

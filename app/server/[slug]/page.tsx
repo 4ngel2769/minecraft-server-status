@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import {
@@ -16,56 +16,200 @@ import {
   RefreshCw,
   Server,
   Database,
+  ChevronDown,
+  ChevronUp,
+  Edit,
+  Bug,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { getServerStatus, formatMOTD, type ServerStatus } from '@/lib/minecraft';
 import { GradientBackground } from '@/components/animate-ui/components/backgrounds/gradient';
+
+// Server response type from API
+interface ServerResponse {
+  success: boolean;
+  server: {
+    online: boolean;
+    hostname: string;
+    ip?: string;
+    port: number;
+    version?: string;
+    protocol?: number;
+    software?: string;
+  };
+  players?: {
+    online: number;
+    max: number;
+    list?: string[];
+    sample?: Array<{ name: string; id: string }>;
+  };
+  motd?: {
+    raw: string[];
+    html: string;
+    clean: string[];
+  };
+  performance: {
+    ping: number;
+  };
+  query?: any;
+  icon?: string;
+  debug: {
+    cacheTime: number;
+    timestamp: string;
+    dns?: {
+      hostname: string;
+      ip?: string;
+      hasARecords: boolean;
+      hasSrvRecord: boolean;
+      srvRecord?: {
+        host: string;
+        port: number;
+      };
+    };
+    protocol: {
+      version?: number;
+      versionName?: string;
+    };
+    connectivity: {
+      ping: number;
+      hasQuery: boolean;
+      hasPlayers: boolean;
+    };
+    security: {
+      mojangBlocked: boolean;
+      eulaBlocked: boolean;
+    };
+    serverType: 'java' | 'bedrock';
+  };
+}
 
 export default function ServerPage() {
   const params = useParams();
   const router = useRouter();
-  const [serverData, setServerData] = useState<ServerStatus | null>(null);
+  const [serverData, setServerData] = useState<ServerResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [showTurnstile, setShowTurnstile] = useState(false);
 
-  const serverAddress = decodeURIComponent(params.slug as string);
+  // Parse slug: "hostname" or "hostname:port"
+  const slug = decodeURIComponent(params.slug as string);
+  const [hostname, port] = slug.includes(':')
+    ? slug.split(':')
+    : [slug, ''];
 
-  const fetchServerStatus = async (manual: boolean = false) => {
+  // Determine if Bedrock based on port
+  const isBedrock = port ? parseInt(port) === 19132 : false;
+  const defaultPort = isBedrock ? 19132 : 25565;
+  const actualPort = port ? parseInt(port) : defaultPort;
+
+  const fetchServerStatus = useCallback(async (manual: boolean = false, token?: string) => {
     try {
       if (manual) setRefreshing(true);
       else setLoading(true);
-      const data = await getServerStatus(serverAddress);
+
+      const response = await fetch('/api/server', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          hostname,
+          port: actualPort,
+          isBedrock,
+          turnstileToken: token || turnstileToken,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch server status');
+      }
+
       setServerData(data);
       setError(null);
+      setShowTurnstile(false); // Hide turnstile on successful request
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch server status');
+      // Show turnstile if rate limited
+      if (err instanceof Error && err.message.includes('rate limit')) {
+        setShowTurnstile(true);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [hostname, actualPort, isBedrock, turnstileToken]);
 
   useEffect(() => {
     fetchServerStatus();
     const interval = setInterval(() => fetchServerStatus(), 30000);
     return () => clearInterval(interval);
-  }, [serverAddress]);
+  }, [fetchServerStatus]);
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(serverAddress);
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleTurnstileVerify = (token: string) => {
+    setTurnstileToken(token);
+    fetchServerStatus(true, token);
+  };
+
+  // Loading skeleton component
+  const LoadingSkeleton = () => (
+    <div className="space-y-6">
+      <Card className="border-2 backdrop-blur-sm bg-background/95">
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div className="space-y-2">
+              <div className="h-10 w-64 bg-muted animate-pulse rounded"></div>
+              <div className="h-6 w-48 bg-muted animate-pulse rounded"></div>
+            </div>
+            <div className="h-8 w-20 bg-muted animate-pulse rounded"></div>
+          </div>
+        </CardHeader>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i} className="border-2 backdrop-blur-sm bg-background/95">
+            <CardHeader className="pb-3">
+              <div className="h-5 w-24 bg-muted animate-pulse rounded"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-8 w-16 bg-muted animate-pulse rounded"></div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Card className="border-2 backdrop-blur-sm bg-background/95">
+        <CardHeader>
+          <div className="h-6 w-40 bg-muted animate-pulse rounded"></div>
+        </CardHeader>
+        <CardContent>
+          <div className="h-24 w-full bg-muted animate-pulse rounded"></div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   return (
     <main className="relative min-h-screen overflow-hidden">
       <GradientBackground />
-      
+
       <div className="relative z-10 container mx-auto px-4 py-8">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -85,14 +229,14 @@ export default function ServerPage() {
               className="gap-2"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
+              Check Again
             </Button>
             <ThemeToggle />
           </div>
         </motion.div>
 
         <div className="max-w-6xl mx-auto space-y-6">
-          {/* Header Card */}
+          {/* Header Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -102,16 +246,16 @@ export default function ServerPage() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <CardTitle className="text-4xl font-bold bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">
-                      Server Status
+                    <CardTitle className="text-5xl font-bold bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                      {hostname}
                     </CardTitle>
                     <CardDescription className="flex items-center gap-2 text-lg">
                       <Server className="w-5 h-5" />
-                      {serverAddress}
+                      {hostname}:{actualPort}
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={copyToClipboard}
+                        onClick={() => copyToClipboard(`${hostname}:${actualPort}`)}
                         className="h-6 w-6 p-0 hover:scale-110 transition-transform"
                       >
                         {copied ? (
@@ -129,33 +273,39 @@ export default function ServerPage() {
                       transition={{ type: 'spring', stiffness: 200 }}
                     >
                       <Badge
-                        variant={serverData.online ? 'default' : 'destructive'}
+                        variant={serverData.server.online ? 'default' : 'destructive'}
                         className="text-sm px-4 py-2"
                       >
                         <Wifi className="w-3 h-3 mr-1" />
-                        {serverData.online ? 'Online' : 'Offline'}
+                        {serverData.server.online ? 'Online' : 'Offline'}
                       </Badge>
                     </motion.div>
                   )}
                 </div>
               </CardHeader>
+
+              {/* Turnstile Widget */}
+              {showTurnstile && (
+                <CardContent className="pt-0">
+                  <div className="border-t pt-4">
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Please complete the captcha to continue checking servers:
+                    </p>
+                    <div
+                      className="cf-turnstile"
+                      data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+                      data-callback="onTurnstileVerify"
+                      data-theme="auto"
+                    ></div>
+                  </div>
+                </CardContent>
+              )}
             </Card>
           </motion.div>
 
-          {loading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex justify-center py-24"
-            >
-              <div className="relative">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary"></div>
-                <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-4 border-primary opacity-20"></div>
-              </div>
-            </motion.div>
-          )}
+          {loading && <LoadingSkeleton />}
 
-          {error && (
+          {error && !loading && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -164,85 +314,103 @@ export default function ServerPage() {
                 <CardContent className="pt-6">
                   <div className="text-center py-8">
                     <p className="text-destructive font-medium">{error}</p>
+                    <Button
+                      variant="outline"
+                      className="mt-4"
+                      onClick={() => fetchServerStatus(true)}
+                    >
+                      Try Again
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
           )}
 
-          {serverData && !loading && (
+          {serverData && !loading && !error && (
             <>
-              {/* Stats Grid */}
+              {/* Server Info Card */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
               >
-                <Card className="border-2 hover:border-primary/50 transition-all hover:shadow-lg backdrop-blur-sm bg-background/95">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Users className="w-5 h-5 text-primary" />
-                      Players
+                <Card className="border-2 backdrop-blur-sm bg-background/95">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Server className="w-5 h-5" />
+                      Server Information
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold">
-                      {serverData.players?.online || 0}{' '}
-                      <span className="text-muted-foreground">/ {serverData.players?.max || 0}</span>
-                    </div>
-                  </CardContent>
-                </Card>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Players */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-primary" />
+                          <span className="font-medium">Players Online</span>
+                        </div>
+                        <div className="text-3xl font-bold">
+                          {serverData.players?.online || 0} / {serverData.players?.max || 0}
+                        </div>
+                        <Progress
+                          value={serverData.players?.max ? (serverData.players.online / serverData.players.max) * 100 : 0}
+                          className="h-2"
+                        />
+                      </div>
 
-                <Card className="border-2 hover:border-purple-500/50 transition-all hover:shadow-lg backdrop-blur-sm bg-background/95">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Database className="w-5 h-5 text-purple-500" />
-                      Version
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold">
-                      {serverData.version || 'Unknown'}
-                    </div>
-                    {serverData.software && (
-                      <p className="text-sm text-muted-foreground mt-1">{serverData.software}</p>
-                    )}
-                  </CardContent>
-                </Card>
+                      {/* Version */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Database className="w-4 h-4 text-purple-500" />
+                          <span className="font-medium">Version</span>
+                        </div>
+                        <div className="text-2xl font-bold">
+                          {serverData.server.version || 'Unknown'}
+                        </div>
+                        {serverData.server.protocol && (
+                          <p className="text-sm text-muted-foreground">
+                            Protocol: {serverData.server.protocol}
+                          </p>
+                        )}
+                        {serverData.server.software && (
+                          <p className="text-sm text-muted-foreground">
+                            Software: {serverData.server.software}
+                          </p>
+                        )}
+                      </div>
 
-                <Card className="border-2 hover:border-pink-500/50 transition-all hover:shadow-lg backdrop-blur-sm bg-background/95">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Activity className="w-5 h-5 text-pink-500" />
-                      Ping
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold">
-                      {serverData.ping || 0}
-                      <span className="text-lg text-muted-foreground">ms</span>
-                    </div>
-                  </CardContent>
-                </Card>
+                      {/* Latency */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-pink-500" />
+                          <span className="font-medium">Latency</span>
+                        </div>
+                        <div className="text-3xl font-bold">
+                          {serverData.performance.ping || 0}
+                          <span className="text-lg text-muted-foreground ml-1">ms</span>
+                        </div>
+                      </div>
 
-                <Card className="border-2 hover:border-green-500/50 transition-all hover:shadow-lg backdrop-blur-sm bg-background/95">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Globe className="w-5 h-5 text-green-500" />
-                      IP Address
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-lg font-mono">
-                      {serverData.ip || 'N/A'}
+                      {/* IP & Port */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4 text-green-500" />
+                          <span className="font-medium">Network</span>
+                        </div>
+                        <div className="font-mono text-lg">
+                          {serverData.server.ip || 'N/A'}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Port: {serverData.server.port}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">Port: {serverData.port}</p>
                   </CardContent>
                 </Card>
               </motion.div>
 
-              {/* MOTD Card */}
+              {/* MOTD Display Card */}
               {serverData.motd && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -251,82 +419,38 @@ export default function ServerPage() {
                 >
                   <Card className="border-2 backdrop-blur-sm bg-background/95">
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Server className="w-5 h-5" />
-                        Message of the Day
+                      <CardTitle className="flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          <Server className="w-5 h-5" />
+                          Message of the Day
+                        </span>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copyToClipboard(serverData.motd!.raw.join('\n'))}
+                            className="gap-2"
+                          >
+                            <Copy className="w-4 h-4" />
+                            Copy MOTD
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => router.push(`/motd-editor?motd=${encodeURIComponent(serverData.motd!.raw.join('\n'))}`)}
+                            className="gap-2"
+                          >
+                            <Edit className="w-4 h-4" />
+                            Edit MOTD
+                          </Button>
+                        </div>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div
-                        className="bg-secondary/50 p-6 rounded-md font-mono text-sm whitespace-pre-wrap border-2 border-primary/20"
-                        dangerouslySetInnerHTML={{ __html: formatMOTD(serverData.motd) }}
+                        className="bg-black/90 p-6 rounded-md font-mono text-base whitespace-pre-wrap border-2 border-primary/20 min-h-24"
+                        dangerouslySetInnerHTML={{ __html: serverData.motd.html }}
                       />
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )}
-
-              {/* DNS Info */}
-              {serverData.dns && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.35 }}
-                >
-                  <Card className="border-2 backdrop-blur-sm bg-background/95">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Globe className="w-5 h-5" />
-                        DNS Information
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Hostname</p>
-                        <p className="font-mono">{serverData.dns.hostname}</p>
-                      </div>
-                      {serverData.dns.ip && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">IP Address</p>
-                          <p className="font-mono">{serverData.dns.ip}</p>
-                        </div>
-                      )}
-                      {serverData.dns.srvRecord && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">SRV Record</p>
-                          <p className="font-mono">
-                            {serverData.dns.srvRecord.host}:{serverData.dns.srvRecord.port}
-                          </p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )}
-
-              {/* Security Status */}
-              {serverData.mojangBlocked !== undefined && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  <Card className={`border-2 backdrop-blur-sm bg-background/95 ${serverData.mojangBlocked ? 'border-destructive/50' : 'border-green-500/50'}`}>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Shield className="w-5 h-5" />
-                        Security Status
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-3">
-                        <Badge variant={serverData.mojangBlocked ? 'destructive' : 'default'}>
-                          {serverData.mojangBlocked ? 'Blocked by Mojang' : 'Not Blocked'}
-                        </Badge>
-                        {serverData.eula_blocked && (
-                          <Badge variant="destructive">EULA Blocked</Badge>
-                        )}
-                      </div>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -337,7 +461,7 @@ export default function ServerPage() {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.45 }}
+                  transition={{ delay: 0.35 }}
                 >
                   <Card className="border-2 backdrop-blur-sm bg-background/95">
                     <CardHeader>
@@ -353,13 +477,13 @@ export default function ServerPage() {
                             key={index}
                             initial={{ opacity: 0, scale: 0 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.5 + index * 0.05 }}
+                            transition={{ delay: 0.4 + index * 0.05 }}
                           >
                             <Badge
                               variant="secondary"
                               className="px-3 py-1.5 text-sm hover:scale-105 transition-transform"
                             >
-                              {typeof player === 'string' ? player : player.name}
+                              {player}
                             </Badge>
                           </motion.div>
                         ))}
@@ -368,10 +492,162 @@ export default function ServerPage() {
                   </Card>
                 </motion.div>
               )}
+
+              {/* Debug Information (Collapsible) */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <Collapsible open={debugOpen} onOpenChange={setDebugOpen}>
+                  <Card className="border-2 backdrop-blur-sm bg-background/95">
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                        <CardTitle className="flex items-center justify-between">
+                          <span className="flex items-center gap-2">
+                            <Bug className="w-5 h-5" />
+                            Debug Information
+                          </span>
+                          {debugOpen ? (
+                            <ChevronUp className="w-5 h-5" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5" />
+                          )}
+                        </CardTitle>
+                        <CardDescription>
+                          Technical details about the server check
+                        </CardDescription>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="space-y-6">
+                        {/* Cache & Timing */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Cache Time</p>
+                            <p className="font-mono">{new Date(serverData.debug.cacheTime).toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Server Type</p>
+                            <Badge variant="outline" className="capitalize">
+                              {serverData.debug.serverType}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Hostname & IP */}
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-2">Network Information</p>
+                          <div className="space-y-2">
+                            <div>
+                              <span className="text-sm text-muted-foreground">Hostname: </span>
+                              <span className="font-mono">{serverData.debug.dns?.hostname || serverData.server.hostname}</span>
+                            </div>
+                            <div>
+                              <span className="text-sm text-muted-foreground">IP Address: </span>
+                              <span className="font-mono">{serverData.server.ip || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="text-sm text-muted-foreground">Port: </span>
+                              <span className="font-mono">{serverData.server.port}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Protocol & Version */}
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-2">Protocol Information</p>
+                          <div className="space-y-2">
+                            <div>
+                              <span className="text-sm text-muted-foreground">Protocol Version: </span>
+                              <span className="font-mono">{serverData.debug.protocol.version || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="text-sm text-muted-foreground">Version Name: </span>
+                              <span className="font-mono">{serverData.debug.protocol.versionName || serverData.server.version || 'N/A'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Security Status */}
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-2">Security Status</p>
+                          <div className="flex gap-2">
+                            <Badge variant={serverData.debug.security.mojangBlocked ? 'destructive' : 'default'}>
+                              {serverData.debug.security.mojangBlocked ? 'Blocked by Mojang' : 'Not Blocked'}
+                            </Badge>
+                            {serverData.debug.security.eulaBlocked && (
+                              <Badge variant="destructive">EULA Blocked</Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* SRV Record */}
+                        {serverData.debug.dns?.srvRecord && (
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground mb-2">SRV Record</p>
+                            <div className="font-mono text-sm">
+                              {serverData.debug.dns.srvRecord.host}:{serverData.debug.dns.srvRecord.port}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Connectivity Status */}
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-2">Connectivity Status</p>
+                          <div className="flex gap-2">
+                            <Badge variant={serverData.debug.connectivity.hasQuery ? 'default' : 'secondary'}>
+                              Query: {serverData.debug.connectivity.hasQuery ? 'Available' : 'Unavailable'}
+                            </Badge>
+                            <Badge variant={serverData.debug.connectivity.hasPlayers ? 'default' : 'secondary'}>
+                              Players: {serverData.debug.connectivity.hasPlayers ? 'Available' : 'Unavailable'}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Ping Status */}
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-2">Ping Information</p>
+                          <div className="font-mono">
+                            {serverData.debug.connectivity.ping}ms
+                          </div>
+                        </div>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              </motion.div>
             </>
           )}
         </div>
       </div>
+
+      {/* Turnstile Script */}
+      <script
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+        async
+        defer
+      ></script>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            window.onTurnstileVerify = function(token) {
+              window.dispatchEvent(new CustomEvent('turnstile-verify', { detail: token }));
+            };
+          `,
+        }}
+      />
+
+      {/* Listen for Turnstile events */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            window.addEventListener('turnstile-verify', function(e) {
+              // This will be handled by the component
+            });
+          `,
+        }}
+      />
     </main>
   );
 }
