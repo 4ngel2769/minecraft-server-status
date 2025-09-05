@@ -648,10 +648,6 @@ Motd:
                       <Download className="w-4 h-4" />
                       Download
                     </Button>
-                    <Button onClick={shareURL} variant="outline" className="gap-2">
-                      <Share2 className="w-4 h-4" />
-                      Share URL
-                    </Button>
                     <Button
                       onClick={() => {
                         setLine1('');
@@ -674,6 +670,361 @@ Motd:
                     <p className="text-xs text-muted-foreground">
                       This is the formatted code ready to paste into your server.properties or plugin config
                     </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Templates Section */}
+            <motion.div variants={itemVariants}>
+              <Card className="border-2 backdrop-blur-sm bg-background/95">
+                <Collapsible open={templatesExpanded} onOpenChange={setTemplatesExpanded}>
+                  <CardHeader className="pb-3">
+                    <CollapsibleTrigger className="flex items-center justify-between w-full group">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Zap className="w-5 h-5" />
+                          MOTD Templates
+                        </CardTitle>
+                        <CardDescription className="text-left">
+                          Quick-start with pre-made designs
+                        </CardDescription>
+                      </div>
+                      {templatesExpanded ? (
+                        <ChevronUp className="w-5 h-5 group-hover:opacity-70 transition-opacity" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 group-hover:opacity-70 transition-opacity" />
+                      )}
+                    </CollapsibleTrigger>
+                  </CardHeader>
+                  <CollapsibleContent>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {TEMPLATES.map((template, index) => (
+                          <Card
+                            key={index}
+                            className="cursor-pointer hover:border-primary transition-all hover:shadow-lg"
+                            onClick={() => loadTemplate(template)}
+                          >
+                            <CardHeader className="pb-3">
+                              <CardTitle className="text-base">{template.name}</CardTitle>
+                              <CardDescription className="text-xs">
+                                {template.description}
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <div
+                                className="bg-[#313233] p-3 rounded-md font-['Courier_New',_monospace] text-xs border"
+                                style={{
+                                  textShadow: '1px 1px 0px rgba(0,0,0,0.5)',
+                                  lineHeight: '1.6',
+                                }}
+                              >
+                                <div dangerouslySetInnerHTML={{ __html: parseMinecraftColors(template.line1) }} />
+                                <div dangerouslySetInnerHTML={{ __html: parseMinecraftColors(template.line2) }} />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Collapsible>
+              </Card>
+            </motion.div>
+
+            {/* Share Section */}
+            <motion.div variants={itemVariants}>
+              <Card className="border-2 backdrop-blur-sm bg-background/95">
+                <Collapsible open={shareExpanded} onOpenChange={setShareExpanded}>
+                  <CardHeader className="pb-3">
+                    <CollapsibleTrigger className="flex items-center justify-between w-full group">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Link className="w-5 h-5" />
+                          Share Your MOTD
+                        </CardTitle>
+                        <CardDescription className="text-left">
+                          Generate a shareable link to your design
+                        </CardDescription>
+                      </div>
+                      {shareExpanded ? (
+                        <ChevronUp className="w-5 h-5 group-hover:opacity-70 transition-opacity" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 group-hover:opacity-70 transition-opacity" />
+                      )}
+                    </CollapsibleTrigger>
+                  </CardHeader>
+                  <CollapsibleContent>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="shareUrl">Shareable URL</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="shareUrl"
+                            value={getShareURL()}
+                            readOnly
+                            className="font-mono text-xs"
+                          />
+                          <Button
+                            onClick={shareURL}
+                            variant="secondary"
+                            className="gap-2 shrink-0"
+                          >
+                            {copiedLink ? (
+                              <>
+                                <CheckCircle2 className="w-4 h-4" />
+                                Copied!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-4 h-4" />
+                                Copy Link
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Share this URL to let others view or edit your MOTD design
+                        </p>
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Collapsible>
+              </Card>
+            </motion.div>
+
+            {/* Export Section */}
+            <motion.div variants={itemVariants}>
+              <Card className="border-2 backdrop-blur-sm bg-background/95">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileCode className="w-5 h-5" />
+                    Export to Server Configs
+                  </CardTitle>
+                  <CardDescription>
+                    Copy formatted code for your server type
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Vanilla/Official */}
+                  <Collapsible
+                    open={exportExpanded.includes('vanilla')}
+                    onOpenChange={() => toggleExportSection('vanilla')}
+                  >
+                    <Card className="border">
+                      <CardHeader className="pb-3">
+                        <CollapsibleTrigger className="flex items-center justify-between w-full group">
+                          <div>
+                            <CardTitle className="text-base flex items-center gap-2">
+                              Vanilla/Official Server
+                              <Badge variant="outline" className="text-xs">server.properties</Badge>
+                            </CardTitle>
+                            <CardDescription className="text-xs text-left">
+                              For official Minecraft servers
+                            </CardDescription>
+                          </div>
+                          {exportExpanded.includes('vanilla') ? (
+                            <ChevronUp className="w-4 h-4 group-hover:opacity-70 transition-opacity" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 group-hover:opacity-70 transition-opacity" />
+                          )}
+                        </CollapsibleTrigger>
+                      </CardHeader>
+                      <CollapsibleContent>
+                        <CardContent className="pt-0 space-y-3">
+                          <div className="bg-secondary/50 p-4 rounded-md font-mono text-xs whitespace-pre-wrap break-all border relative group">
+                            <Button
+                              onClick={() => copyExportCode(getVanillaFormat())}
+                              size="sm"
+                              variant="ghost"
+                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              {copied ? (
+                                <CheckCircle2 className="w-3 h-3" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </Button>
+                            <code>{getVanillaFormat()}</code>
+                          </div>
+                          <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-md p-3">
+                            <p className="text-xs text-yellow-600 dark:text-yellow-400 font-semibold">
+                              ⚠️ Note: Does not support RGB/HEX colors
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Vanilla servers only support legacy color codes (§0-§f). HEX colors will not display correctly.
+                            </p>
+                          </div>
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
+
+                  {/* Spigot/Paper */}
+                  <Collapsible
+                    open={exportExpanded.includes('spigot')}
+                    onOpenChange={() => toggleExportSection('spigot')}
+                  >
+                    <Card className="border">
+                      <CardHeader className="pb-3">
+                        <CollapsibleTrigger className="flex items-center justify-between w-full group">
+                          <div>
+                            <CardTitle className="text-base flex items-center gap-2">
+                              Spigot/Paper Server
+                              <Badge variant="outline" className="text-xs">server.properties</Badge>
+                            </CardTitle>
+                            <CardDescription className="text-xs text-left">
+                              For Spigot, Paper, and forks
+                            </CardDescription>
+                          </div>
+                          {exportExpanded.includes('spigot') ? (
+                            <ChevronUp className="w-4 h-4 group-hover:opacity-70 transition-opacity" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 group-hover:opacity-70 transition-opacity" />
+                          )}
+                        </CollapsibleTrigger>
+                      </CardHeader>
+                      <CollapsibleContent>
+                        <CardContent className="pt-0 space-y-3">
+                          <div className="bg-secondary/50 p-4 rounded-md font-mono text-xs whitespace-pre-wrap break-all border relative group">
+                            <Button
+                              onClick={() => copyExportCode(getSpigotFormat())}
+                              size="sm"
+                              variant="ghost"
+                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              {copied ? (
+                                <CheckCircle2 className="w-3 h-3" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </Button>
+                            <code>{getSpigotFormat()}</code>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Supports HEX colors via §x§R§R§G§G§B§B format
+                          </p>
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
+
+                  {/* BungeeCord */}
+                  <Collapsible
+                    open={exportExpanded.includes('bungeecord')}
+                    onOpenChange={() => toggleExportSection('bungeecord')}
+                  >
+                    <Card className="border">
+                      <CardHeader className="pb-3">
+                        <CollapsibleTrigger className="flex items-center justify-between w-full group">
+                          <div>
+                            <CardTitle className="text-base flex items-center gap-2">
+                              BungeeCord/Waterfall
+                              <Badge variant="outline" className="text-xs">config.yml</Badge>
+                            </CardTitle>
+                            <CardDescription className="text-xs text-left">
+                              For proxy servers
+                            </CardDescription>
+                          </div>
+                          {exportExpanded.includes('bungeecord') ? (
+                            <ChevronUp className="w-4 h-4 group-hover:opacity-70 transition-opacity" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 group-hover:opacity-70 transition-opacity" />
+                          )}
+                        </CollapsibleTrigger>
+                      </CardHeader>
+                      <CollapsibleContent>
+                        <CardContent className="pt-0 space-y-3">
+                          <div className="bg-secondary/50 p-4 rounded-md font-mono text-xs whitespace-pre-wrap break-all border relative group">
+                            <Button
+                              onClick={() => copyExportCode(getBungeeCordFormat())}
+                              size="sm"
+                              variant="ghost"
+                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              {copied ? (
+                                <CheckCircle2 className="w-3 h-3" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </Button>
+                            <code>{getBungeeCordFormat()}</code>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Uses & instead of § for color codes in YAML format
+                          </p>
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
+
+                  {/* ServerListPlus */}
+                  <Collapsible
+                    open={exportExpanded.includes('serverlistplus')}
+                    onOpenChange={() => toggleExportSection('serverlistplus')}
+                  >
+                    <Card className="border">
+                      <CardHeader className="pb-3">
+                        <CollapsibleTrigger className="flex items-center justify-between w-full group">
+                          <div>
+                            <CardTitle className="text-base flex items-center gap-2">
+                              ServerListPlus
+                              <Badge variant="outline" className="text-xs">Plugin Config</Badge>
+                            </CardTitle>
+                            <CardDescription className="text-xs text-left">
+                              For ServerListPlus plugin
+                            </CardDescription>
+                          </div>
+                          {exportExpanded.includes('serverlistplus') ? (
+                            <ChevronUp className="w-4 h-4 group-hover:opacity-70 transition-opacity" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 group-hover:opacity-70 transition-opacity" />
+                          )}
+                        </CollapsibleTrigger>
+                      </CardHeader>
+                      <CollapsibleContent>
+                        <CardContent className="pt-0 space-y-3">
+                          <div className="bg-secondary/50 p-4 rounded-md font-mono text-xs whitespace-pre-wrap break-all border relative group">
+                            <Button
+                              onClick={() => copyExportCode(getServerListPlusFormat())}
+                              size="sm"
+                              variant="ghost"
+                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              {copied ? (
+                                <CheckCircle2 className="w-3 h-3" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </Button>
+                            <code>{getServerListPlusFormat()}</code>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Supports &#RRGGBB format for HEX colors
+                          </p>
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      onClick={() => setExportExpanded(['vanilla', 'spigot', 'bungeecord', 'serverlistplus'])}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                    >
+                      Expand All
+                    </Button>
+                    <Button
+                      onClick={() => setExportExpanded([])}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                    >
+                      Collapse All
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
