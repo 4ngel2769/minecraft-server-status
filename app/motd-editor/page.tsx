@@ -244,10 +244,59 @@ function MotdEditorContent() {
   
   const shareURL = () => {
     const encoded = encodeForURL(getFullMOTD());
-    const url = `${window.location.origin}/motd-editor?motd=${encoded}`;
+    const url = `${window.location.origin}/motd-editor?text=${encoded}`;
     navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+  
+  const getShareURL = () => {
+    const encoded = encodeForURL(getFullMOTD());
+    return `${window.location.origin}/motd-editor?text=${encoded}`;
+  };
+  
+  const loadTemplate = (template: typeof TEMPLATES[0]) => {
+    setLine1(template.line1);
+    setLine2(template.line2);
+  };
+  
+  const copyExportCode = (code: string) => {
+    navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+  
+  const toggleExportSection = (section: string) => {
+    setExportExpanded(prev =>
+      prev.includes(section)
+        ? prev.filter(s => s !== section)
+        : [...prev, section]
+    );
+  };
+  
+  // Generate export formats
+  const getVanillaFormat = () => {
+    const motd = getFullMOTD();
+    // Convert to unicode escape sequences
+    return `motd=${motd.replace(/§/g, '\\u00A7')}`;
+  };
+  
+  const getSpigotFormat = () => {
+    return `motd=${convertToFormat(getFullMOTD(), 'spigot')}`;
+  };
+  
+  const getBungeeCordFormat = () => {
+    const motd = convertToFormat(getFullMOTD(), 'bungeecord');
+    return `motd: "${motd}"`;
+  };
+  
+  const getServerListPlusFormat = () => {
+    const motd = convertToFormat(getFullMOTD(), 'serverlistplus');
+    const lines = motd.split('\n');
+    return `# ServerListPlus Configuration
+Motd:
+  - "${lines[0] || ''}"
+  - "${lines[1] || ''}"`;
   };
 
   const getCharCount = (text: string) => {
