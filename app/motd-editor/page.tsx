@@ -15,6 +15,8 @@ import {
   RotateCcw,
   Hash,
   Wand2,
+  Share2,
+  FileCode,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +30,18 @@ import { Toggle } from '@/components/ui/toggle';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { parseColorCodes } from '@/lib/minecraft';
+import {
+  parseMinecraftColors,
+  convertToFormat,
+  generateGradient as generateGradientText,
+  encodeForURL,
+  decodeFromURL,
+  centerText as centerTextUtil,
+  getVisibleLength,
+  validateMOTD,
+} from '@/lib/motd-formatter';
 import { GradientBackground } from '@/components/animate-ui/components/backgrounds/gradient';
 
 const containerVariants = {
@@ -92,12 +105,16 @@ function MotdEditorContent() {
   
   // Custom hex color input
   const [customHex, setCustomHex] = useState('#FFFFFF');
+  
+  // Export format
+  const [exportFormat, setExportFormat] = useState<'vanilla' | 'spigot' | 'bungeecord' | 'serverlistplus'>('spigot');
 
   // Load MOTD from URL query params if present
   useEffect(() => {
     const motd = searchParams.get('motd');
     if (motd) {
-      const lines = motd.split('\n');
+      const decoded = decodeFromURL(motd);
+      const lines = decoded.split('\n');
       setLine1(lines[0] || '');
       setLine2(lines[1] || '');
     }
@@ -119,87 +136,66 @@ function MotdEditorContent() {
   };
 
   const hexToMinecraftColor = (hex: string): string => {
-    // Find closest Minecraft color or return the hex as RGB format
-    const closest = COLORS.reduce((prev, curr) => {
-      const prevDist = colorDistance(hex, prev.hex);
-      const currDist = colorDistance(hex, curr.hex);
-      return currDist < prevDist ? curr : prev;
-    });
-    return closest.code;
-  };
-
-  const colorDistance = (hex1: string, hex2: string): number => {
-    const r1 = parseInt(hex1.slice(1, 3), 16);
-    const g1 = parseInt(hex1.slice(3, 5), 16);
-    const b1 = parseInt(hex1.slice(5, 7), 16);
-    const r2 = parseInt(hex2.slice(1, 3), 16);
-    const g2 = parseInt(hex2.slice(3, 5), 16);
-    const b2 = parseInt(hex2.slice(5, 7), 16);
-    return Math.sqrt(Math.pow(r1 - r2, 2) + Math.pow(g1 - g2, 2) + Math.pow(b1 - b2, 2));
-  };
-
-  const interpolateColor = (color1: string, color2: string, factor: number): string => {
-    const r1 = parseInt(color1.slice(1, 3), 16);
-    const g1 = parseInt(color1.slice(3, 5), 16);
-    const b1 = parseInt(color1.slice(5, 7), 16);
-    const r2 = parseInt(color2.slice(1, 3), 16);
-    const g2 = parseInt(color2.slice(3, 5), 16);
-    const b2 = parseInt(color2.slice(5, 7), 16);
-
-    const r = Math.round(r1 + (r2 - r1) * factor);
-    const g = Math.round(g1 + (g2 - g1) * factor);
-    const b = Math.round(b1 + (b2 - b1) * factor);
-
-    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    // Convert hex to Minecraft hex format §x§R§R§G§G§B§B
+    const cleaned = hex.replace('#', '').toUpperCase();
+    return '§x' + cleaned.split('').map(c => `§${c}`).join('');
   };
 
   const applyGradient = () => {
     if (!gradientText) return;
     
-    let result = '';
-    for (let i = 0; i < gradientText.length; i++) {
-      const factor = i / (gradientText.length - 1 || 1);
-      const color = interpolateColor(gradientStart, gradientEnd, factor);
-      const minecraftColor = hexToMinecraftColor(color);
-      result += minecraftColor + gradientText[i];
+    try {
+      const gradientResult = generateGradientText(gradientText, gradientStart, gradientEnd);
+      setCurrentLine(getCurrentLine() + gradientResult);
+      setGradientText('');
+    } catch (error) {
+      console.error('Gradient generation failed:', error);
     }
-    
-    setCurrentLine(getCurrentLine() + result);
-    setGradientText('');
   };
 
-  const centerText = (text: string): string => {
-    const maxLength = 60;
-    const stripped = text.replace(/§[0-9a-fk-or]/gi, '');
-    const spaces = Math.max(0, Math.floor((maxLength - stripped.length) / 2));
-    return ' '.repeat(spaces) + text;
+  const centerLine = (text: string): string => {
+    return centerLines ? centerTextUtil(text, 60) : text;
   };
 
   const getFullMOTD = () => {
-    const l1 = centerLines ? centerText(line1) : line1;
-    const l2 = centerLines ? centerText(line2) : line2;
+    const l1 = centerLine(line1);
+    const l2 = centerLine(line2);
     return `${l1}\n${l2}`;
+  };
+  
+  const getFormattedMOTD = () => {
+    return convertToFormat(getFullMOTD(), exportFormat);
   };
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(getFullMOTD());
+    navigator.clipboard.writeText(getFormattedMOTD());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const downloadAsText = () => {
-    const blob = new Blob([getFullMOTD()], { type: 'text/plain' });
+    const blob = new Blob([getFormattedMOTD()], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'motd.txt';
+    a.download = `motd-${exportFormat}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
+  
+  const shareURL = () => {
+    const encoded = encodeForURL(getFullMOTD());
+    const url = `${window.location.origin}/motd-editor?motd=${encoded}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const getCharCount = (text: string) => {
-    return text.replace(/§[0-9a-fk-or]/gi, '').length;
+    return getVisibleLength(text);
   };
+  
+  const validation = validateMOTD(getFullMOTD());
 
   return (
     <main className="relative min-h-screen overflow-hidden">
@@ -488,11 +484,45 @@ function MotdEditorContent() {
                       lineHeight: '1.8',
                     }}
                   >
-                    <div dangerouslySetInnerHTML={{ __html: parseColorCodes(centerLines ? centerText(line1) : line1) || '<span style="color: #AAAAAA;">Line 1...</span>' }} />
-                    <div dangerouslySetInnerHTML={{ __html: parseColorCodes(centerLines ? centerText(line2) : line2) || '<span style="color: #AAAAAA;">Line 2...</span>' }} />
+                    <div dangerouslySetInnerHTML={{ __html: parseMinecraftColors(centerLine(line1)) || '<span style="color: #AAAAAA;">Line 1...</span>' }} />
+                    <div dangerouslySetInnerHTML={{ __html: parseMinecraftColors(centerLine(line2)) || '<span style="color: #AAAAAA;">Line 2...</span>' }} />
                   </div>
 
-                  <div className="flex gap-2">
+                  {/* Validation Messages */}
+                  {!validation.valid && (
+                    <div className="bg-destructive/10 border-2 border-destructive/50 rounded-md p-3">
+                      <p className="text-sm font-semibold text-destructive mb-2">⚠️ Validation Issues:</p>
+                      <ul className="text-xs text-destructive space-y-1">
+                        {validation.errors.map((error, index) => (
+                          <li key={index}>• {error}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Export Format Selector */}
+                  <div className="space-y-2">
+                    <Label className="text-sm flex items-center gap-2">
+                      <FileCode className="w-4 h-4" />
+                      Export Format
+                    </Label>
+                    <Select value={exportFormat} onValueChange={(value: any) => setExportFormat(value)}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select server type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="vanilla">Vanilla (Legacy codes only)</SelectItem>
+                        <SelectItem value="spigot">Spigot/Paper (Unicode format)</SelectItem>
+                        <SelectItem value="bungeecord">BungeeCord/Waterfall (& format)</SelectItem>
+                        <SelectItem value="serverlistplus">ServerListPlus (&#RRGGBB)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Choose your server type for proper format code conversion
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
                     <Button onClick={copyToClipboard} className="gap-2">
                       {copied ? (
                         <>
@@ -510,6 +540,10 @@ function MotdEditorContent() {
                       <Download className="w-4 h-4" />
                       Download
                     </Button>
+                    <Button onClick={shareURL} variant="outline" className="gap-2">
+                      <Share2 className="w-4 h-4" />
+                      Share URL
+                    </Button>
                     <Button
                       onClick={() => {
                         setLine1('');
@@ -525,10 +559,13 @@ function MotdEditorContent() {
 
                   {/* Raw Output */}
                   <div className="space-y-2">
-                    <Label className="text-sm">Raw MOTD Code</Label>
+                    <Label className="text-sm">Formatted Output ({exportFormat})</Label>
                     <div className="bg-secondary/50 p-4 rounded-md font-mono text-xs whitespace-pre-wrap break-all border-2 border-muted">
-                      {getFullMOTD() || 'Your MOTD will appear here...'}
+                      {getFormattedMOTD() || 'Your MOTD will appear here...'}
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      This is the formatted code ready to paste into your server.properties or plugin config
+                    </p>
                   </div>
                 </CardContent>
               </Card>
