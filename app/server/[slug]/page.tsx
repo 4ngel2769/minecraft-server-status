@@ -294,11 +294,16 @@ export default function ServerPage() {
               variant="outline"
               size="sm"
               onClick={() => fetchServerStatus(true)}
-              disabled={refreshing}
+              disabled={refreshing || cooldownTime > 0 || (ENABLE_TURNSTILE && !turnstileToken && cooldownTime === 0)}
               className="gap-2"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              Check Again
+              {cooldownTime > 0 
+                ? `Wait ${cooldownTime}s` 
+                : refreshing 
+                  ? 'Checking...' 
+                  : 'Check Again'
+              }
             </Button>
             <ThemeToggle />
           </div>
@@ -353,20 +358,50 @@ export default function ServerPage() {
                 </div>
               </CardHeader>
 
-              {/* Turnstile Widget */}
-              {showTurnstile && (
+              {/* Cooldown Message */}
+              {cooldownTime > 0 && (
                 <CardContent className="pt-0">
-                  <div className="border-t pt-4">
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Please complete the captcha to continue checking servers:
-                    </p>
-                    <div
-                      className="cf-turnstile"
-                      data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
-                      data-callback="onTurnstileVerify"
-                      data-theme="auto"
-                    ></div>
-                  </div>
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="border-t pt-4"
+                  >
+                    <div className="bg-yellow-500/10 border-2 border-yellow-500/50 rounded-lg p-4 text-center">
+                      <Clock className="w-5 h-5 inline-block mr-2 text-yellow-600 dark:text-yellow-400" />
+                      <span className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
+                        You can check this server again in {cooldownTime} second{cooldownTime !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  </motion.div>
+                </CardContent>
+              )}
+
+              {/* Turnstile Widget */}
+              {showTurnstile && ENABLE_TURNSTILE && TURNSTILE_SITE_KEY && cooldownTime === 0 && (
+                <CardContent className="pt-0">
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="border-t pt-4"
+                  >
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Shield className="w-4 h-4" />
+                        <span>Please complete the verification to continue:</span>
+                      </div>
+                      <div className="flex justify-center">
+                        <Turnstile
+                          siteKey={TURNSTILE_SITE_KEY}
+                          onSuccess={(token) => {
+                            setTurnstileToken(token);
+                            fetchServerStatus(true, token);
+                          }}
+                          onError={() => setTurnstileToken(null)}
+                          onExpire={() => setTurnstileToken(null)}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
                 </CardContent>
               )}
             </Card>
@@ -381,14 +416,32 @@ export default function ServerPage() {
             >
               <Card className="border-destructive/50 bg-destructive/10">
                 <CardContent className="pt-6">
-                  <div className="text-center py-8">
+                  <div className="text-center py-8 space-y-4">
                     <p className="text-destructive font-medium">{error}</p>
+                    
+                    {/* Show Turnstile if needed */}
+                    {showTurnstile && ENABLE_TURNSTILE && TURNSTILE_SITE_KEY && cooldownTime === 0 && (
+                      <div className="flex justify-center">
+                        <Turnstile
+                          siteKey={TURNSTILE_SITE_KEY}
+                          onSuccess={(token) => {
+                            setTurnstileToken(token);
+                            setError(null);
+                            fetchServerStatus(true, token);
+                          }}
+                          onError={() => setTurnstileToken(null)}
+                          onExpire={() => setTurnstileToken(null)}
+                        />
+                      </div>
+                    )}
+                    
                     <Button
                       variant="outline"
                       className="mt-4"
                       onClick={() => fetchServerStatus(true)}
+                      disabled={cooldownTime > 0 || (ENABLE_TURNSTILE && !turnstileToken)}
                     >
-                      Try Again
+                      {cooldownTime > 0 ? `Wait ${cooldownTime}s...` : 'Try Again'}
                     </Button>
                   </div>
                 </CardContent>
