@@ -15,10 +15,15 @@ import {
  * Verify Cloudflare Turnstile token
  */
 async function verifyTurnstileToken(token: string): Promise<boolean> {
+  // If Turnstile is disabled, skip verification
+  if (!isTurnstileEnabled()) {
+    return true;
+  }
+
   const secretKey = process.env.TURNSTILE_SECRET_KEY;
 
   if (!secretKey) {
-    console.warn('TURNSTILE_SECRET_KEY not configured');
+    console.warn('TURNSTILE_SECRET_KEY not configured but ENABLE_TURNSTILE is true');
     return true; // Allow in development if not configured
   }
 
@@ -64,49 +69,6 @@ function getClientIp(request: NextRequest): string {
   return 'unknown';
 }
 
-/**
- * Check rate limit for an IP address
- */
-function checkRateLimit(ip: string): {
-  allowed: boolean;
-  remainingTime?: number;
-} {
-  const now = Date.now();
-  const lastRequest = rateLimitMap.get(ip);
-
-  if (lastRequest) {
-    const timeSinceLastRequest = now - lastRequest;
-    if (timeSinceLastRequest < RATE_LIMIT_MS) {
-      const remainingTime = Math.ceil((RATE_LIMIT_MS - timeSinceLastRequest) / 1000);
-      return { allowed: false, remainingTime };
-    }
-  }
-
-  rateLimitMap.set(ip, now);
-  return { allowed: true };
-}
-
-/**
- * Clean up old rate limit entries (run periodically)
- */
-function cleanupRateLimitMap() {
-  const now = Date.now();
-  const entriesToDelete: string[] = [];
-
-  rateLimitMap.forEach((timestamp, ip) => {
-    if (now - timestamp > RATE_LIMIT_MS) {
-      entriesToDelete.push(ip);
-    }
-  });
-
-  for (const ip of entriesToDelete) {
-    rateLimitMap.delete(ip);
-  }
-}
-
-// Clean up every minute
-setInterval(cleanupRateLimitMap, 60000);
-
 export async function POST(request: NextRequest) {
   try {
     // Parse request body
@@ -129,26 +91,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!turnstileToken || typeof turnstileToken !== 'string') {
-      return NextResponse.json(
-        {
-          error: 'Invalid request',
-          message: 'Turnstile token is required',
-        },
-        { status: 400 }
-      );
-    }
+    // Verify Turnstile token (only if enabled)
+    if (isTurnstileEnabled()) {
+      if (!turnstileToken || typeof turnstileToken !== 'string') {
+        return NextResponse.json(
+          {
+            error: 'Invalid request',
+            message: 'Turnstile verification required',
+          },
+          { status: 400 }
+        );
+      }
 
-    // Verify Turnstile token
-    const isTokenValid = await verifyTurnstileToken(turnstileToken);
-    if (!isTokenValid) {
-      return NextResponse.json(
-        {
-          error: 'Verification failed',
-          message: 'Invalid or expired captcha token. Please try again.',
-        },
-        { status: 403 }
-      );
+      const isTokenValid = await verifyTurnstileToken(turnstileToken);
+      if (!isTokenValid) {
+        return NextResponse.json(
+          {
+            error: 'Verification failed',
+            message: 'Invalid or expired captcha token. Please try again.',
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // Validate server address format
@@ -166,14 +130,15 @@ export async function POST(request: NextRequest) {
     // Get client IP for rate limiting
     const clientIp = getClientIp(request);
 
-    // Check rate limit
-    const rateLimitCheck = checkRateLimit(clientIp);
+    // Check rate limit (IP + hostname combined)
+    const rateLimitCheck = checkCombinedRateLimit(clientIp, hostname);
     if (!rateLimitCheck.allowed) {
       return NextResponse.json(
         {
           error: 'Rate limit exceeded',
-          message: `Too many requests. Please wait ${rateLimitCheck.remainingTime} seconds before trying again.`,
+          message: rateLimitCheck.message || 'Too many requests. Please try again later.',
           remainingTime: rateLimitCheck.remainingTime,
+          reason: rateLimitCheck.reason,
         },
         { status: 429 }
       );
