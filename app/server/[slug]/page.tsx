@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'motion/react';
 import {
   ArrowLeft,
@@ -29,6 +29,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { GradientBackground } from '@/components/animate-ui/components/backgrounds/gradient';
+import { Turnstile } from '@marsidev/react-turnstile';
+import { ClientCooldown } from '@/lib/rate-limit';
 
 // Server response type from API
 interface ServerResponse {
