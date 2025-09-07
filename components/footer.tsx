@@ -1,15 +1,11 @@
-import Link from 'next/link';
-import { Github, Heart, Code, Server, Twitter, Mail } from 'lucide-react';
-import { motion } from 'motion/react';
-
-export function Footer() {
-  const currentYear = new Date().getFullYear();
-
-  'use client';
+'use client';
 
 import Link from 'next/link';
 import { Server, Github, Twitter, Mail, Heart, Code2 } from 'lucide-react';
 import { motion } from 'motion/react';
+
+export function Footer() {
+  const currentYear = new Date().getFullYear();
 
 const footerLinks = {
     product: [
