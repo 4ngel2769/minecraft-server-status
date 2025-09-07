@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { Server, Code, Menu, X } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
