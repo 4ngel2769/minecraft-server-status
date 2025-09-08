@@ -160,15 +160,18 @@ export default function ServerPage() {
 
   const fetchServerStatus = useCallback(async (manual: boolean = false, token?: string) => {
     try {
-      // Check cooldown before making request
-      if (cooldownTime > 0 && manual) {
-        setError(`Please wait ${cooldownTime} seconds before checking again`);
+      // Check cooldown before making request (both manual and auto)
+      const currentCooldown = ClientCooldown.getRemainingTime(hostname);
+      if (currentCooldown > 0) {
+        if (manual) {
+          setError(`Please wait ${currentCooldown} seconds before checking again`);
+        }
         return;
       }
 
       // Check for Turnstile requirement
       const requiredToken = token || turnstileToken;
-      if (ENABLE_TURNSTILE && !requiredToken) {
+      if (ENABLE_TURNSTILE && !requiredToken && manual) {
         setShowTurnstile(true);
         setError('Please complete the verification below');
         return;
@@ -176,9 +179,6 @@ export default function ServerPage() {
 
       if (manual) setRefreshing(true);
       else setLoading(true);
-
-      // Record check time
-      ClientCooldown.recordCheck(hostname);
 
       const response = await fetch('/api/server', {
         method: 'POST',
@@ -201,11 +201,16 @@ export default function ServerPage() {
           const remaining = data.remainingTime || ClientCooldown.getCooldownSeconds();
           setCooldownTime(remaining);
           setShowTurnstile(false);
+          // Record the failed check to prevent immediate retry
+          ClientCooldown.recordCheck(hostname);
           throw new Error(data.message || `Rate limited. Please wait ${remaining} seconds.`);
         }
         throw new Error(data.message || 'Failed to fetch server status');
       }
 
+      // Only record check time on successful request
+      ClientCooldown.recordCheck(hostname);
+      
       setServerData(data);
       setError(null);
       setShowTurnstile(false);
@@ -218,7 +223,7 @@ export default function ServerPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [hostname, actualPort, isBedrock, turnstileToken, cooldownTime]);
+  }, [hostname, actualPort, isBedrock, turnstileToken]);
 
   useEffect(() => {
     fetchServerStatus();
