@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Header } from "@/components/header";
@@ -8,6 +9,12 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({ subsets: ["latin"] });
+
+const minecraftFont = localFont({
+  src: "../MinecraftDefault-Regular.ttf",
+  variable: "--font-minecraft",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Minecraft Server Status | Check Any MC Server",
@@ -28,7 +35,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.className} ${minecraftFont.variable}`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

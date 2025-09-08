@@ -684,7 +684,7 @@ Motd:
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div
-                    className="bg-[#313233] p-8 rounded-md font-['Courier_New',_monospace] text-base whitespace-pre-wrap border-2 border-primary/20 min-h-32"
+                    className="bg-[#313233] p-8 rounded-md font-minecraft text-base whitespace-pre-wrap border-2 border-primary/20 min-h-32"
                     style={{
                       textShadow: '2px 2px 0px rgba(0,0,0,0.5)',
                       lineHeight: '1.8',
@@ -844,7 +844,7 @@ Motd:
                             </CardHeader>
                             <CardContent>
                               <div
-                                className="bg-[#313233] p-3 rounded-md font-['Courier_New',_monospace] text-xs border"
+                                className="bg-[#313233] p-3 rounded-md font-minecraft text-xs border"
                                 style={{
                                   textShadow: '1px 1px 0px rgba(0,0,0,0.5)',
                                   lineHeight: '1.6',
