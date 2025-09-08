@@ -28,7 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ThemeToggle } from '@/components/theme-toggle';
+// import { ThemeToggle } from '@/components/theme-toggle';
 import { GradientBackground } from '@/components/animate-ui/components/backgrounds/gradient';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { ClientCooldown } from '@/lib/rate-limit';
@@ -331,7 +331,7 @@ export default function ServerPage() {
                   : 'Check Again'
               }
             </Button>
-            <ThemeToggle />
+            {/* <ThemeToggle /> */}
           </div>
         </motion.div>
 
