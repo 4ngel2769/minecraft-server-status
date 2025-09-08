@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Server, Zap, Eye, Code, Clock, Activity, Users, Shield } from 'lucide-react';
+import { Search, Server, Zap, Eye, Code, Clock, Activity, Users, Shield, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { ClientCooldown } from '@/lib/rate-limit';
+import { useToast } from '@/hooks/use-toast';
+import { validateHostname, validatePort } from '@/lib/validation';
 
 interface RecentServer {
   address: string;
