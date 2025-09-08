@@ -83,35 +83,97 @@ export default function Home() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (serverAddress.trim()) {
-      // Check if Turnstile is required
-      if (ENABLE_TURNSTILE && !turnstileToken) {
-        // Show Turnstile if not already shown
-        setShowTurnstile(true);
+    
+    const trimmedAddress = serverAddress.trim();
+    if (!trimmedAddress) {
+      toast({
+        title: 'Server address required',
+        description: 'Please enter a server hostname or IP address',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Parse hostname and port
+    const [hostname, portStr] = trimmedAddress.includes(':')
+      ? trimmedAddress.split(':')
+      : [trimmedAddress, ''];
+
+    // Validate hostname
+    const hostnameValidation = validateHostname(hostname);
+    if (!hostnameValidation.valid) {
+      setValidationError(hostnameValidation.error || 'Invalid hostname');
+      toast({
+        title: 'Invalid hostname',
+        description: hostnameValidation.error,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate port if provided
+    if (portStr) {
+      const portValidation = validatePort(portStr);
+      if (!portValidation.valid) {
+        setValidationError(portValidation.error || 'Invalid port');
+        toast({
+          title: 'Invalid port',
+          description: portValidation.error,
+          variant: 'destructive',
+        });
         return;
       }
-
-      // Record cooldown
-      ClientCooldown.recordCheck(serverAddress);
-      
-      // Save to recent servers
-      const newRecent: RecentServer = {
-        address: serverAddress,
-        timestamp: Date.now(),
-        isBedrock,
-      };
-      const updated = [newRecent, ...recentServers.filter(s => s.address !== serverAddress)].slice(0, 5);
-      setRecentServers(updated);
-      localStorage.setItem('recentServers', JSON.stringify(updated));
-
-      // Navigate to server page with turnstile token if needed
-      const slug = encodeURIComponent(serverAddress);
-      const params = new URLSearchParams({
-        bedrock: isBedrock.toString(),
-        ...(turnstileToken && { token: turnstileToken }),
-      });
-      router.push(`/server/${slug}?${params.toString()}`);
     }
+
+    // Clear validation error
+    setValidationError(null);
+
+    // Check cooldown
+    if (cooldownTime > 0) {
+      toast({
+        title: 'Please wait',
+        description: `You can check again in ${cooldownTime} second${cooldownTime !== 1 ? 's' : ''}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check if Turnstile is required
+    if (ENABLE_TURNSTILE && !turnstileToken) {
+      setShowTurnstile(true);
+      toast({
+        title: 'Verification required',
+        description: 'Please complete the verification below',
+      });
+      return;
+    }
+
+    // Record cooldown
+    ClientCooldown.recordCheck(trimmedAddress);
+    
+    // Save to recent servers
+    const newRecent: RecentServer = {
+      address: trimmedAddress,
+      timestamp: Date.now(),
+      isBedrock,
+    };
+    const updated = [newRecent, ...recentServers.filter(s => s.address !== trimmedAddress)].slice(0, 5);
+    setRecentServers(updated);
+    localStorage.setItem('recentServers', JSON.stringify(updated));
+
+    // Show success toast
+    toast({
+      title: 'Checking server...',
+      description: `Looking up ${trimmedAddress}`,
+    });
+
+    // Navigate to server page with turnstile token if needed
+    const slug = encodeURIComponent(trimmedAddress);
+    const params = new URLSearchParams({
+      bedrock: isBedrock.toString(),
+      ...(turnstileToken && { token: turnstileToken }),
+    });
+    router.push(`/server/${slug}?${params.toString()}`);
   };
 
   const canSubmit = () => {
@@ -190,14 +252,32 @@ export default function Home() {
               <CardContent className="pt-6">
                 <form onSubmit={handleSearch} className="space-y-6">
                   <div className="space-y-4">
-                    <Input
-                      type="text"
-                      placeholder="mc.hypixel.net"
-                      value={serverAddress}
-                      onChange={(e) => setServerAddress(e.target.value)}
-                      className="h-14 text-lg rounded-xl border-2 focus-visible:ring-4"
-                      required
-                    />
+                    <div className="space-y-2">
+                      <Input
+                        type="text"
+                        placeholder="mc.hypixel.net or 192.168.1.1:25565"
+                        value={serverAddress}
+                        onChange={(e) => {
+                          setServerAddress(e.target.value);
+                          setValidationError(null); // Clear error on change
+                        }}
+                        className={cn(
+                          "h-14 text-lg rounded-xl border-2 focus-visible:ring-4",
+                          validationError && "border-destructive focus-visible:ring-destructive"
+                        )}
+                        required
+                      />
+                      {validationError && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="flex items-start gap-2 text-sm text-destructive px-2"
+                        >
+                          <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                          <span>{validationError}</span>
+                        </motion.div>
+                      )}
+                    </div>
                     
                     <div className="flex items-center space-x-3 px-2">
                       <Checkbox
