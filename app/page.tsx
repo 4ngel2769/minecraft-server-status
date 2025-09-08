@@ -34,7 +34,9 @@ export default function Home() {
   const [showTurnstile, setShowTurnstile] = useState(false);
   const [cooldownTime, setCooldownTime] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const router = useRouter();
+  const { toast } = useToast();
 
   // Load recent servers from localStorage
   useEffect(() => {
