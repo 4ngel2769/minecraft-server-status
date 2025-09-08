@@ -382,6 +382,7 @@ Motd:
   };
   
   const validation = validateMOTD(getFullMOTD());
+  const lengthValidation = validateMOTDLength(getFullMOTD());
 
   return (
     <main className="relative min-h-screen overflow-hidden">
