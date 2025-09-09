@@ -165,7 +165,7 @@ export default function PrivacyPolicy() {
         {/* Children's Privacy */}
         <Card>
           <CardHeader>
-            <CardTitle>Children's Privacy</CardTitle>
+            <CardTitle>Children&apos;s Privacy</CardTitle>
           </CardHeader>
           <CardContent>
             <p>
