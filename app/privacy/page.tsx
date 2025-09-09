@@ -31,7 +31,7 @@ export default function PrivacyPolicy() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p>
-              Welcome to Minecraft Server Status ("we," "our," or "us"). We respect your privacy and are committed to protecting your personal data. This privacy policy explains how we collect, use, and safeguard your information when you use our service.
+              Welcome to Minecraft Server Status (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;). We respect your privacy and are committed to protecting your personal data. This privacy policy explains how we collect, use, and safeguard your information when you use our service.
             </p>
             <p>
               By using our service, you agree to the collection and use of information in accordance with this policy.
@@ -181,7 +181,7 @@ export default function PrivacyPolicy() {
           </CardHeader>
           <CardContent>
             <p>
-              We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date. You are advised to review this Privacy Policy periodically for any changes.
+              We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the &quot;Last updated&quot; date. You are advised to review this Privacy Policy periodically for any changes.
             </p>
           </CardContent>
         </Card>

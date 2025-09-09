@@ -28,7 +28,7 @@ export default function TermsOfService() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p>
-              Welcome to Minecraft Server Status. By accessing or using our service, you agree to be bound by these Terms of Service ("Terms"). If you disagree with any part of these terms, you may not access the service.
+              Welcome to Minecraft Server Status. By accessing or using our service, you agree to be bound by these Terms of Service (&quot;Terms&quot;). If you disagree with any part of these terms, you may not access the service.
             </p>
             <p>
               These Terms apply to all visitors, users, and others who access or use the service.
@@ -158,9 +158,9 @@ export default function TermsOfService() {
           <CardContent>
             <div className="space-y-4">
               <div>
-                <h3 className="font-semibold mb-2">Service "As Is"</h3>
+                <h3 className="font-semibold mb-2">Service &quot;As Is&quot;</h3>
                 <p>
-                  The service is provided on an "AS IS" and "AS AVAILABLE" basis. We make no warranties, expressed or implied, regarding:
+                  The service is provided on an &quot;AS IS&quot; and &quot;AS AVAILABLE&quot; basis. We make no warranties, expressed or implied, regarding:
                 </p>
                 <ul className="list-disc list-inside space-y-1 ml-4 mt-2">
                   <li>Accuracy of server information</li>
@@ -229,7 +229,7 @@ export default function TermsOfService() {
           </CardHeader>
           <CardContent>
             <p>
-              We reserve the right to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days' notice before any new terms take effect. What constitutes a material change will be determined at our sole discretion.
+              We reserve the right to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days&apos; notice before any new terms take effect. What constitutes a material change will be determined at our sole discretion.
             </p>
             <p className="mt-4">
               By continuing to access or use our service after revisions become effective, you agree to be bound by the revised terms.
