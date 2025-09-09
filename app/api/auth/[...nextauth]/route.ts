@@ -1,6 +1,7 @@
 import NextAuth, { AuthOptions, User as NextAuthUser } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 import dbConnect from '@/lib/mongodb';
 import User, { IUser } from '@/models/User';
 
@@ -50,7 +51,6 @@ export const authOptions: AuthOptions = {
   },
   pages: {
     signIn: '/auth/signin',
-    signUp: '/auth/signup',
     error: '/auth/error',
   },
   callbacks: {
