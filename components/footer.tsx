@@ -20,8 +20,8 @@ const footerLinks = {
     ],
     legal: [
       { label: 'MIT License', href: 'https://github.com/4ngel2769/minecraft-server-status/blob/main/LICENSE', external: true },
-      { label: 'Privacy', href: '#' },
-      { label: 'Terms', href: '#' },
+      { label: 'Privacy', href: '/privacy' },
+      { label: 'Terms', href: '/terms' },
     ],
   };
 
