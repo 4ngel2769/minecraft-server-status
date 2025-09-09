@@ -14,6 +14,7 @@ const footerLinks = {
       { label: 'Documentation', href: '/docs' },
     ],
     resources: [
+      { label: 'API Documentation', href: '/docs/api' },
       { label: 'GitHub Repository', href: 'https://github.com/4ngel2769/minecraft-server-status', external: true },
       { label: 'Report Issues', href: 'https://github.com/4ngel2769/minecraft-server-status/issues', external: true },
       { label: 'Contribute', href: 'https://github.com/4ngel2769/minecraft-server-status/pulls', external: true },
@@ -28,7 +29,7 @@ const footerLinks = {
   const socialLinks = [
     { icon: Github, href: 'https://github.com/4ngel2769', label: 'GitHub' },
     { icon: Twitter, href: 'https://x.com/4ngel2769', label: 'Twitter' },
-    { icon: Mail, href: 'mailto:mcsrv@angellabs.xyz', label: 'Email' },
+    { icon: Mail, href: 'mailto:mcserverstatus@angellabs.xyz', label: 'Email' },
   ];
 
   return (
