@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { Server, Code, Menu, X } from 'lucide-react';
+import { Server, Code, Menu, X, LogIn, LogOut, User, Heart } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
+import { useSession, signOut } from 'next-auth/react';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
