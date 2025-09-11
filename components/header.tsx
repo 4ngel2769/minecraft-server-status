@@ -11,6 +11,7 @@ import { useSession, signOut } from 'next-auth/react';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { data: session, status } = useSession();
 
   const navLinks = [
     { href: '/', label: 'Home', icon: Server },
