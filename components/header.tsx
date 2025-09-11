@@ -52,6 +52,41 @@ export function Header() {
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-primary to-purple-500 group-hover:w-full transition-all duration-300" />
               </Link>
             ))}
+            
+            {/* Auth Buttons */}
+            {status === 'loading' ? (
+              <div className="w-20 h-9 bg-accent/50 animate-pulse rounded-md" />
+            ) : session ? (
+              <>
+                <Link
+                  href="#favorites"
+                  className="group relative text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    <Heart className="w-4 h-4" />
+                    Favorites
+                  </span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-primary to-purple-500 group-hover:w-full transition-all duration-300" />
+                </Link>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => signOut()}
+                  className="gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <Button asChild size="sm" className="gap-2">
+                <Link href="/auth/signin">
+                  <LogIn className="w-4 h-4" />
+                  Sign In
+                </Link>
+              </Button>
+            )}
+            
             <ThemeToggle />
           </div>
 
