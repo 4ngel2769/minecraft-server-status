@@ -47,7 +47,7 @@ export default function APIDocsPage() {
                 <span className="text-sm font-semibold text-emerald-400">Base URL</span>
               </div>
               <code className="text-sm text-gray-300">
-                https://your-domain.com/api/server
+                {APP_URL}/api/server
               </code>
             </div>
           </CardContent>
@@ -117,17 +117,17 @@ export default function APIDocsPage() {
 {`GET /api/server?host=mc.hypixel.net&type=java
 
 # With cURL
-curl "https://your-domain.com/api/server?host=mc.hypixel.net&type=java"
+curl "${APP_URL}/api/server?host=mc.hypixel.net&type=java"
 
 # With JavaScript (fetch)
-fetch('https://your-domain.com/api/server?host=mc.hypixel.net&type=java')
+fetch('${APP_URL}/api/server?host=mc.hypixel.net&type=java')
   .then(res => res.json())
   .then(data => console.log(data));
 
 # With Python (requests)
 import requests
 response = requests.get(
-    'https://your-domain.com/api/server',
+    '${APP_URL}/api/server',
     params={'host': 'mc.hypixel.net', 'type': 'java'}
 )
 data = response.json()`}
