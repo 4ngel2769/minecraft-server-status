@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Server, Code, Menu, X, LogIn, LogOut, User, Heart } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { ThemeSwitcher } from '@/components/theme-switcher';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -59,7 +60,7 @@ export function Header() {
             ) : session ? (
               <>
                 <Link
-                  href="#favorites"
+                  href="/favorites"
                   className="group relative text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <span className="flex items-center gap-2">
@@ -87,11 +88,13 @@ export function Header() {
               </Button>
             )}
             
+            <ThemeSwitcher />
             <ThemeToggle />
           </div>
 
           {/* Mobile Menu Button */}
           <div className="flex md:hidden items-center gap-2">
+            <ThemeSwitcher />
             <ThemeToggle />
             <Button
               variant="ghost"
@@ -136,7 +139,7 @@ export function Header() {
                 {session ? (
                   <>
                     <Link
-                      href="#favorites"
+                      href="/favorites"
                       onClick={() => setMobileMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                     >

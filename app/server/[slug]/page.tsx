@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
@@ -21,6 +22,7 @@ import {
   Edit,
   Bug,
   AlertTriangle,
+  Heart,
 } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { Button } from '@/components/ui/button';
@@ -101,6 +103,7 @@ export default function ServerPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session } = useSession();
   const [serverData, setServerData] = useState<ServerResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,6 +114,8 @@ export default function ServerPage() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [showTurnstile, setShowTurnstile] = useState(false);
   const [cooldownTime, setCooldownTime] = useState(0);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoritesLoading, setFavoritesLoading] = useState(false);
   const { toast } = useToast();
 
   // Parse slug: "hostname" or "hostname:port"
@@ -318,6 +323,91 @@ export default function ServerPage() {
     return () => clearInterval(interval);
   }, [fetchServerStatus, hostname]);
 
+  // Check if server is in favorites
+  useEffect(() => {
+    const checkFavorite = async () => {
+      if (!session) return;
+      
+      try {
+        const response = await fetch('/api/favorites');
+        if (response.ok) {
+          const favorites = await response.json();
+          const inFavorites = favorites.some(
+            (fav: any) => fav.host === hostname && fav.port === actualPort
+          );
+          setIsFavorite(inFavorites);
+        }
+      } catch (error) {
+        console.error('Failed to check favorites:', error);
+      }
+    };
+    
+    checkFavorite();
+  }, [session, hostname, actualPort]);
+
+  const toggleFavorite = async () => {
+    if (!session) {
+      toast({
+        title: 'Authentication required',
+        description: 'Please sign in to add favorites',
+        variant: 'destructive',
+      });
+      router.push('/auth/signin');
+      return;
+    }
+
+    setFavoritesLoading(true);
+    
+    try {
+      if (isFavorite) {
+        // Remove from favorites
+        const response = await fetch('/api/favorites', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ host: hostname, port: actualPort }),
+        });
+
+        if (response.ok) {
+          setIsFavorite(false);
+          toast({
+            title: 'Removed from favorites',
+            description: `${hostname}:${actualPort} has been removed`,
+          });
+        }
+      } else {
+        // Add to favorites
+        const response = await fetch('/api/favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ host: hostname, port: actualPort }),
+        });
+
+        if (response.ok) {
+          setIsFavorite(true);
+          toast({
+            title: 'Added to favorites',
+            description: `${hostname}:${actualPort} has been saved`,
+          });
+        } else {
+          const data = await response.json();
+          toast({
+            title: 'Error',
+            description: data.message || 'Failed to add to favorites',
+            variant: 'destructive',
+          });
+        }
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update favorites',
+        variant: 'destructive',
+      });
+    } finally {
+      setFavoritesLoading(false);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -402,6 +492,16 @@ export default function ServerPage() {
             Back to Search
           </Button>
           <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleFavorite}
+              disabled={favoritesLoading}
+              className="gap-2"
+            >
+              <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current text-red-500' : ''}`} />
+              {isFavorite ? 'Unfavorite' : 'Add to Favorites'}
+            </Button>
             <Button
               variant="outline"
               size="sm"
