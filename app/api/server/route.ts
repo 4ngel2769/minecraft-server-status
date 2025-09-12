@@ -10,6 +10,12 @@ import {
   isTurnstileEnabled 
 } from '@/lib/rate-limit';
 import { getCachedStatus, cacheStatus, isCacheEnabled } from '@/lib/server-cache';
+import { deduplicateRequest, getServerRequestKey } from '@/lib/request-dedupe';
+import { 
+  sanitizeString, 
+  validateHostname as validateHostFormat,
+  validateTurnstileToken as validateTurnstileFormat
+} from '@/lib/validation';
 
 // Remove old rate limiting code - now handled by rate-limit.ts
 
@@ -76,18 +82,32 @@ export async function POST(request: NextRequest) {
     // Parse request body
     const body = await request.json();
     const {
-      hostname,
+      hostname: rawHostname,
       port,
       isBedrock = false,
       turnstileToken,
     } = body;
 
-    // Validate required fields
-    if (!hostname || typeof hostname !== 'string') {
+    // Sanitize and validate hostname
+    if (!rawHostname || typeof rawHostname !== 'string') {
       return NextResponse.json(
         {
           error: 'Invalid request',
           message: 'Hostname is required and must be a string',
+        },
+        { status: 400 }
+      );
+    }
+
+    const hostname = sanitizeString(rawHostname);
+    
+    // Validate hostname format
+    const hostnameValidation = validateHostFormat(hostname);
+    if (!hostnameValidation.valid) {
+      return NextResponse.json(
+        {
+          error: 'Invalid hostname',
+          message: hostnameValidation.error || 'Invalid hostname format',
         },
         { status: 400 }
       );
@@ -100,6 +120,18 @@ export async function POST(request: NextRequest) {
           {
             error: 'Invalid request',
             message: 'Turnstile verification required',
+          },
+          { status: 400 }
+        );
+      }
+
+      // Validate token format before verifying
+      const tokenValidation = validateTurnstileFormat(turnstileToken);
+      if (!tokenValidation.valid) {
+        return NextResponse.json(
+          {
+            error: 'Invalid request',
+            message: 'Invalid captcha token format',
           },
           { status: 400 }
         );
@@ -169,10 +201,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Fetch server status
+    // Fetch server status with request deduplication
+    const dedupeKey = getServerRequestKey(hostname, port, isBedrock);
     let serverStatus: ServerStatus;
+    
     try {
-      serverStatus = await getServerStatus(serverAddress, isBedrock, clientIp);
+      serverStatus = await deduplicateRequest(dedupeKey, async () => {
+        return await getServerStatus(serverAddress, isBedrock, clientIp);
+      });
     } catch (error) {
       // Handle specific error types
       if (error instanceof Error) {

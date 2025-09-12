@@ -4,6 +4,14 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import Favorite from '@/models/Favorite';
 import { features, server } from '@/lib/config';
+import { 
+  sanitizeString, 
+  validateHostname, 
+  validatePort, 
+  validateServerType, 
+  validateAlias,
+  sanitizeMongoQuery 
+} from '@/lib/validation';
 
 // GET: Fetch all favorites for the authenticated user
 export async function GET(request: NextRequest) {
@@ -53,10 +61,53 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { serverHost, serverPort, serverType, alias } = body;
+    const { serverHost: rawHost, serverPort, serverType: rawType, alias: rawAlias } = body;
 
-    if (!serverHost || !serverPort) {
+    // Validate and sanitize inputs
+    if (!rawHost || !serverPort) {
       return NextResponse.json({ error: 'Server host and port are required' }, { status: 400 });
+    }
+
+    const serverHost = sanitizeString(rawHost);
+    
+    // Validate hostname
+    const hostValidation = validateHostname(serverHost);
+    if (!hostValidation.valid) {
+      return NextResponse.json(
+        { error: hostValidation.error || 'Invalid hostname' },
+        { status: 400 }
+      );
+    }
+
+    // Validate port
+    const portValidation = validatePort(serverPort);
+    if (!portValidation.valid) {
+      return NextResponse.json(
+        { error: portValidation.error || 'Invalid port' },
+        { status: 400 }
+      );
+    }
+
+    // Validate and sanitize server type
+    const serverType = rawType || 'java';
+    const typeValidation = validateServerType(serverType);
+    if (!typeValidation.valid) {
+      return NextResponse.json(
+        { error: typeValidation.error || 'Invalid server type' },
+        { status: 400 }
+      );
+    }
+
+    // Validate and sanitize alias (optional)
+    const alias = rawAlias ? sanitizeString(rawAlias) : null;
+    if (alias) {
+      const aliasValidation = validateAlias(alias);
+      if (!aliasValidation.valid) {
+        return NextResponse.json(
+          { error: aliasValidation.error || 'Invalid alias' },
+          { status: 400 }
+        );
+      }
     }
 
     await dbConnect();
@@ -86,8 +137,8 @@ export async function POST(request: NextRequest) {
       userId: session.user.id,
       serverHost,
       serverPort,
-      serverType: serverType || 'java',
-      alias: alias || null,
+      serverType,
+      alias,
     });
 
     return NextResponse.json({ favorite }, { status: 201 });
@@ -115,7 +166,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const favoriteId = searchParams.get('id');
+    const favoriteId = sanitizeString(searchParams.get('id') || '');
 
     if (!favoriteId) {
       return NextResponse.json({ error: 'Favorite ID is required' }, { status: 400 });
@@ -123,10 +174,13 @@ export async function DELETE(request: NextRequest) {
 
     await dbConnect();
 
-    const favorite = await Favorite.findOneAndDelete({
-      _id: favoriteId,
-      userId: session.user.id,
-    });
+    // Use sanitized query to prevent NoSQL injection
+    const favorite = await Favorite.findOneAndDelete(
+      sanitizeMongoQuery({
+        _id: favoriteId,
+        userId: session.user.id,
+      })
+    );
 
     if (!favorite) {
       return NextResponse.json({ error: 'Favorite not found' }, { status: 404 });

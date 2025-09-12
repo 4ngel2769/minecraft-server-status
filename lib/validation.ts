@@ -1,11 +1,214 @@
 /**
- * Validation utilities for error handling
+ * Validation utilities for error handling and input sanitization
  */
 
 export interface ValidationResult {
   valid: boolean;
   error?: string;
   errorType?: 'format' | 'range' | 'network' | 'dns' | 'timeout' | 'invalid';
+}
+
+/**
+ * Sanitize string input to prevent XSS attacks
+ */
+export function sanitizeString(input: string): string {
+  return input
+    .trim()
+    .replace(/[<>]/g, '') // Remove HTML brackets
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .replace(/on\w+\s*=/gi, '') // Remove event handlers
+    .substring(0, 1000); // Limit length
+}
+
+/**
+ * Sanitize MongoDB query to prevent NoSQL injection
+ */
+export function sanitizeMongoQuery(query: any): any {
+  if (typeof query !== 'object' || query === null) {
+    return query;
+  }
+  
+  const sanitized: any = {};
+  
+  for (const key in query) {
+    if (!Object.prototype.hasOwnProperty.call(query, key)) {
+      continue;
+    }
+    
+    // Prevent MongoDB operators in keys
+    if (key.startsWith('$')) {
+      continue;
+    }
+    
+    const value = query[key];
+    
+    if (typeof value === 'object' && value !== null) {
+      sanitized[key] = sanitizeMongoQuery(value);
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  
+  return sanitized;
+}
+
+/**
+ * Validate email format
+ */
+export function validateEmail(email: string): ValidationResult {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  
+  if (!emailRegex.test(email)) {
+    return {
+      valid: false,
+      error: 'Invalid email format',
+      errorType: 'format',
+    };
+  }
+  
+  if (email.length > 254) {
+    return {
+      valid: false,
+      error: 'Email is too long',
+      errorType: 'range',
+    };
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Validate password strength
+ */
+export function validatePassword(password: string): {
+  valid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+  
+  if (password.length < 8) {
+    errors.push('Password must be at least 8 characters long');
+  }
+  
+  if (password.length > 128) {
+    errors.push('Password must be less than 128 characters');
+  }
+  
+  if (!/[a-zA-Z]/.test(password)) {
+    errors.push('Password must contain at least one letter');
+  }
+  
+  if (!/[0-9]/.test(password)) {
+    errors.push('Password must contain at least one number');
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * Validate name format
+ */
+export function validateName(name: string): ValidationResult {
+  const sanitized = name.trim();
+  
+  if (sanitized.length === 0) {
+    return {
+      valid: false,
+      error: 'Name cannot be empty',
+      errorType: 'format',
+    };
+  }
+  
+  if (sanitized.length > 100) {
+    return {
+      valid: false,
+      error: 'Name is too long (max 100 characters)',
+      errorType: 'range',
+    };
+  }
+  
+  // Allow letters, numbers, spaces, hyphens, apostrophes
+  const nameRegex = /^[a-zA-Z0-9\s'-]+$/;
+  if (!nameRegex.test(sanitized)) {
+    return {
+      valid: false,
+      error: 'Name contains invalid characters',
+      errorType: 'format',
+    };
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Validate server alias (nickname for favorites)
+ */
+export function validateAlias(alias: string | undefined): ValidationResult {
+  if (!alias || alias.trim().length === 0) {
+    return { valid: true }; // Optional field
+  }
+  
+  const sanitized = alias.trim();
+  
+  if (sanitized.length > 50) {
+    return {
+      valid: false,
+      error: 'Alias is too long (max 50 characters)',
+      errorType: 'range',
+    };
+  }
+  
+  if (!/^[a-zA-Z0-9\s'-]+$/.test(sanitized)) {
+    return {
+      valid: false,
+      error: 'Alias contains invalid characters',
+      errorType: 'format',
+    };
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Validate server type
+ */
+export function validateServerType(type: string): ValidationResult {
+  if (type !== 'java' && type !== 'bedrock') {
+    return {
+      valid: false,
+      error: 'Server type must be either "java" or "bedrock"',
+      errorType: 'invalid',
+    };
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Validate turnstile token format
+ */
+export function validateTurnstileToken(token: string): ValidationResult {
+  if (!token || token.trim().length === 0) {
+    return {
+      valid: false,
+      error: 'Turnstile token is required',
+      errorType: 'format',
+    };
+  }
+  
+  // Turnstile tokens are long alphanumeric strings with dashes/underscores
+  if (!/^[a-zA-Z0-9_-]{100,2000}$/.test(token)) {
+    return {
+      valid: false,
+      error: 'Invalid turnstile token format',
+      errorType: 'format',
+    };
+  }
+  
+  return { valid: true };
 }
 
 /**
