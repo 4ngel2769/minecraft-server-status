@@ -13,6 +13,7 @@ export const config = {
   auth: {
     nextAuthSecret: process.env.NEXTAUTH_SECRET || 'your-super-secret-key-change-this-in-production',
     nextAuthUrl: process.env.NEXTAUTH_URL || 'http://localhost:3000',
+    appUrl: process.env.APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000',
   },
 
   // Admin Account (Optional)

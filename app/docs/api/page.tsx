@@ -1,16 +1,22 @@
 import { Metadata } from "next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Code, Server, Clock, Shield, AlertTriangle, CheckCircle2, Key, BookOpen } from "lucide-react";
+import { GradientBackground } from "@/components/animate-ui/components/backgrounds/gradient";
+import { auth } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "API Documentation - Minecraft Server Status",
   description: "Public API documentation for developers. Learn how to integrate our Minecraft server status checker into your applications.",
 };
 
+const APP_URL = auth.appUrl;
+
 export default function APIDocsPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white py-12 px-4">
-      <div className="max-w-5xl mx-auto space-y-8">
+    <main className="relative min-h-screen overflow-hidden">
+      <GradientBackground />
+      
+      <div className="relative z-10 max-w-5xl mx-auto space-y-8 py-12 px-4">{/* Header */}
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center gap-3">
@@ -475,6 +481,6 @@ Retry-After: 35
           </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }
