@@ -1,3 +1,5 @@
+import { server } from '@/lib/config';
+
 // Types and Interfaces
 export interface MOTDData {
   raw: string[];
@@ -145,7 +147,7 @@ export async function checkJavaServer(
   try {
     const response = await fetch(
       `https://api.mcstatus.io/v2/status/java/${hostname}:${port}`,
-      { signal: AbortSignal.timeout(5000) }
+      { signal: AbortSignal.timeout(server.queryTimeout * 1000) }
     );
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -239,7 +241,7 @@ export async function checkBedrockServer(
   try {
     const response = await fetch(
       `https://api.mcstatus.io/v2/status/bedrock/${hostname}:${port}`,
-      { signal: AbortSignal.timeout(5000) }
+      { signal: AbortSignal.timeout(server.queryTimeout * 1000) }
     );
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

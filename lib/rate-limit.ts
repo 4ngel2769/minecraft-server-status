@@ -6,6 +6,8 @@
  * 2. Per-hostname rate limiting (cooldown between checks)
  */
 
+import { rateLimit, turnstile } from '@/lib/config';
+
 // Types
 interface RateLimitEntry {
   count: number;
@@ -18,16 +20,18 @@ interface HostnameCooldown {
 }
 
 // Configuration from environment variables
-const COOLDOWN_SECONDS = parseInt(process.env.NEXT_PUBLIC_COOLDOWN_SECONDS || '10', 10);
-const REQUESTS_PER_MINUTE = parseInt(process.env.RATE_LIMIT_REQUESTS_PER_MINUTE || '6', 10);
-const ENABLE_TURNSTILE = process.env.NEXT_PUBLIC_ENABLE_TURNSTILE === 'true';
+const COOLDOWN_SECONDS = rateLimit.cooldownSeconds;
+const REQUESTS_PER_MINUTE = rateLimit.requestsPerMinute;
+const REQUESTS_PER_HOUR = rateLimit.requestsPerHour;
+const ENABLE_TURNSTILE = turnstile.enabled;
 
 // In-memory storage (use Redis for production multi-instance deployments)
 const ipRateLimitMap = new Map<string, RateLimitEntry>();
+const ipHourlyLimitMap = new Map<string, RateLimitEntry>();
 const hostnameRateLimitMap = new Map<string, number>(); // hostname -> last check timestamp
 
 /**
- * Check if IP has exceeded rate limit
+ * Check if IP has exceeded rate limit (per minute)
  * @param ip - Client IP address
  * @returns Object with allowed status and remaining time
  */
@@ -68,6 +72,60 @@ export function checkIpRateLimit(ip: string): {
     return { 
       allowed: true, 
       requestsRemaining: REQUESTS_PER_MINUTE - entry.count 
+    };
+  }
+
+  // Rate limit exceeded
+  const remainingTime = Math.ceil((entry.resetTime - now) / 1000);
+  return { 
+    allowed: false, 
+    remainingTime,
+    requestsRemaining: 0
+  };
+}
+
+/**
+ * Check if IP has exceeded hourly rate limit
+ * @param ip - Client IP address
+ * @returns Object with allowed status and remaining time
+ */
+export function checkIpHourlyRateLimit(ip: string): {
+  allowed: boolean;
+  remainingTime?: number;
+  requestsRemaining?: number;
+} {
+  // If REQUESTS_PER_HOUR is 0, unlimited requests allowed
+  if (REQUESTS_PER_HOUR === 0) {
+    return { allowed: true };
+  }
+
+  const now = Date.now();
+  const entry = ipHourlyLimitMap.get(ip);
+
+  // No previous requests from this IP
+  if (!entry) {
+    ipHourlyLimitMap.set(ip, {
+      count: 1,
+      resetTime: now + 3600000, // 1 hour from now
+    });
+    return { allowed: true, requestsRemaining: REQUESTS_PER_HOUR - 1 };
+  }
+
+  // Check if reset time has passed
+  if (now >= entry.resetTime) {
+    ipHourlyLimitMap.set(ip, {
+      count: 1,
+      resetTime: now + 3600000,
+    });
+    return { allowed: true, requestsRemaining: REQUESTS_PER_HOUR - 1 };
+  }
+
+  // Within rate limit window
+  if (entry.count < REQUESTS_PER_HOUR) {
+    entry.count++;
+    return { 
+      allowed: true, 
+      requestsRemaining: REQUESTS_PER_HOUR - entry.count 
     };
   }
 

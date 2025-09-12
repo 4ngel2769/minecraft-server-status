@@ -3,10 +3,19 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import Favorite from '@/models/Favorite';
+import { features, server } from '@/lib/config';
 
 // GET: Fetch all favorites for the authenticated user
 export async function GET(request: NextRequest) {
   try {
+    // Check if favorites feature is enabled
+    if (!features.favorites) {
+      return NextResponse.json(
+        { error: 'Favorites feature is currently disabled' },
+        { status: 403 }
+      );
+    }
+
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.id) {
@@ -29,6 +38,14 @@ export async function GET(request: NextRequest) {
 // POST: Add a new favorite server
 export async function POST(request: NextRequest) {
   try {
+    // Check if favorites feature is enabled
+    if (!features.favorites) {
+      return NextResponse.json(
+        { error: 'Favorites feature is currently disabled' },
+        { status: 403 }
+      );
+    }
+
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.id) {
@@ -43,6 +60,16 @@ export async function POST(request: NextRequest) {
     }
 
     await dbConnect();
+
+    // Check current favorite count for this user
+    const favoriteCount = await Favorite.countDocuments({ userId: session.user.id });
+    
+    if (favoriteCount >= server.maxFavoritesPerUser) {
+      return NextResponse.json(
+        { error: `Maximum ${server.maxFavoritesPerUser} favorites allowed per user` },
+        { status: 400 }
+      );
+    }
 
     // Check if favorite already exists
     const existing = await Favorite.findOne({
@@ -73,6 +100,14 @@ export async function POST(request: NextRequest) {
 // DELETE: Remove a favorite server
 export async function DELETE(request: NextRequest) {
   try {
+    // Check if favorites feature is enabled
+    if (!features.favorites) {
+      return NextResponse.json(
+        { error: 'Favorites feature is currently disabled' },
+        { status: 403 }
+      );
+    }
+
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.id) {

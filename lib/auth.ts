@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import dbConnect from '@/lib/mongodb';
 import User, { IUser } from '@/models/User';
+import { auth } from '@/lib/config';
 
 export const authOptions: AuthOptions = {
   providers: [
@@ -67,5 +68,5 @@ export const authOptions: AuthOptions = {
       return session;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET || 'your-super-secret-key-change-this-in-production',
+  secret: auth.nextAuthSecret,
 };
