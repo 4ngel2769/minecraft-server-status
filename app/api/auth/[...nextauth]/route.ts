@@ -20,7 +20,7 @@ export const authOptions: AuthOptions = {
         try {
           await dbConnect();
           
-          const user = await User.findOne({ email: credentials.email }).select('+password');
+          const user = await User.findOne({ email: credentials.email }).select('+password') as IUser | null;
           
           if (!user) {
             throw new Error('Invalid email or password');
@@ -33,7 +33,7 @@ export const authOptions: AuthOptions = {
           }
 
           return {
-            id: user._id.toString(),
+            id: (user._id as mongoose.Types.ObjectId).toString(),
             email: user.email,
             name: user.name || user.email.split('@')[0],
           };
