@@ -203,7 +203,7 @@ function MotdEditorContent() {
         });
       }
     }
-  }, [searchParams]);
+  }, [searchParams, toast]);
 
   const getCurrentLine = () => activeLine === 1 ? line1 : line2;
   const setCurrentLine = (value: string) => {
