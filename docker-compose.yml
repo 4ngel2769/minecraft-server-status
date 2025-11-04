@@ -1,4 +1,19 @@
 services:
+  mongodb:
+    image: mongo:7-jammy
+    container_name: minecraft-status-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD:-password}
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE:-mcsrv}
+    volumes:
+      - mcsrvstatus_mongodb_data:/data/db
+    networks:
+      - mcsrvstatus-network
+    restart: unless-stopped
+
   app:
     build:
       context: .
@@ -8,9 +23,28 @@ services:
         - NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
         - NEXT_PUBLIC_GA_MEASUREMENT_ID=${NEXT_PUBLIC_GA_MEASUREMENT_ID}
         - NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
+    container_name: minecraft-status-app
     ports:
       - "3000:3000"
     environment:
+      # Database - uses MongoDB container name
+      - MONGODB_URI=${MONGODB_URI:-mongodb://admin:password@mongodb:27017/mcsrv?authSource=admin}
+      
+      # Authentication
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - APP_URL=${APP_URL:-http://localhost:3000}
+      
+      # Email (optional)
+      - EMAIL_FROM_EMAIL=${EMAIL_FROM_EMAIL}
+      - EMAIL_SMTP_HOST=${EMAIL_SMTP_HOST}
+      - EMAIL_SMTP_PORT=${EMAIL_SMTP_PORT}
+      - EMAIL_SMTP_USER=${EMAIL_SMTP_USER}
+      - EMAIL_SMTP_PASS=${EMAIL_SMTP_PASS}
+      
+      # Discord (optional)
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      
       # Cloudflare Turnstile
       - NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
       - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY}
@@ -24,6 +58,8 @@ services:
       
       # Node Environment
       - NODE_ENV=production
+    depends_on:
+      - mongodb
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
@@ -33,6 +69,9 @@ services:
       start_period: 40s
     networks:
       - mcsrvstatus-network
+
+volumes:
+  mcsrvstatus_mongodb_data:
 
 networks:
   mcsrvstatus-network:
