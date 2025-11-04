@@ -218,224 +218,360 @@ export default function MotdEditorPage() {
           <ThemeToggle />
         </motion.div>
 
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="max-w-6xl mx-auto space-y-6"
-        >
-          <motion.div variants={itemVariants} className="text-center space-y-2">
-            <h1 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">
-              MOTD Editor
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Create stunning Minecraft server Messages of the Day with color codes and formatting
-            </p>
-          </motion.div>
+        <TooltipProvider>
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="max-w-6xl mx-auto space-y-6"
+          >
+            {/* Header */}
+            <motion.div variants={itemVariants} className="text-center space-y-2">
+              <h1 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                MOTD Creator
+              </h1>
+              <p className="text-lg text-muted-foreground">
+                Design your Minecraft server's Message of the Day
+              </p>
+            </motion.div>
 
-          {/* Templates */}
-          <motion.div variants={itemVariants}>
-            <Card className="border-2 backdrop-blur-sm bg-background/95">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5" />
-                  Quick Templates
-                </CardTitle>
-                <CardDescription>Start with a pre-made template</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {templates.map((template, index) => (
-                    <motion.div
-                      key={index}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <Button
-                        variant="outline"
-                        className="w-full h-auto p-4 flex flex-col items-start gap-2 hover:border-primary/50"
-                        onClick={() => setMotdText(template.text)}
-                      >
-                        <span className="font-semibold">{template.name}</span>
-                        <span className="text-xs font-mono text-muted-foreground whitespace-pre-wrap text-left">
-                          {template.text.split('\n')[0].substring(0, 40)}...
-                        </span>
-                      </Button>
-                    </motion.div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+            {/* Text Editor Section */}
+            <motion.div variants={itemVariants}>
+              <Card className="border-2 backdrop-blur-sm bg-background/95">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Type className="w-5 h-5" />
+                    Text Editor
+                  </CardTitle>
+                  <CardDescription>
+                    Create your two-line MOTD (recommended max ~60 characters per line)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Line Selector Tabs */}
+                  <Tabs value={activeLine.toString()} onValueChange={(v) => setActiveLine(parseInt(v) as 1 | 2)}>
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="1">Line 1</TabsTrigger>
+                      <TabsTrigger value="2">Line 2</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="1" className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label htmlFor="line1">Line 1</Label>
+                          <Badge variant={getCharCount(line1) > 60 ? 'destructive' : 'secondary'}>
+                            {getCharCount(line1)} / 60 chars
+                          </Badge>
+                        </div>
+                        <Input
+                          id="line1"
+                          value={line1}
+                          onChange={(e) => setLine1(e.target.value)}
+                          placeholder="§6Welcome to §bMy Server"
+                          className="font-mono text-base border-2"
+                        />
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="2" className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label htmlFor="line2">Line 2</Label>
+                          <Badge variant={getCharCount(line2) > 60 ? 'destructive' : 'secondary'}>
+                            {getCharCount(line2)} / 60 chars
+                          </Badge>
+                        </div>
+                        <Input
+                          id="line2"
+                          value={line2}
+                          onChange={(e) => setLine2(e.target.value)}
+                          placeholder="§aHave fun playing!"
+                          className="font-mono text-base border-2"
+                        />
+                      </div>
+                    </TabsContent>
+                  </Tabs>
 
-          {/* Color Codes */}
-          <motion.div variants={itemVariants}>
-            <Card className="border-2 backdrop-blur-sm bg-background/95">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Palette className="w-5 h-5" />
-                  Color Codes
-                </CardTitle>
-                <CardDescription>Click to insert color codes into your MOTD</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {colors.map((c) => (
-                    <motion.div key={c.value} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => insertCode(c.code)}
-                        className="w-full justify-start gap-2 hover:border-primary/50"
-                        style={{ borderLeftColor: c.hex, borderLeftWidth: '4px' }}
-                      >
-                        <span className="font-mono text-xs">{c.code}</span>
-                        <span className="text-xs">{c.label}</span>
-                      </Button>
-                    </motion.div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Format Codes */}
-          <motion.div variants={itemVariants}>
-            <Card className="border-2 backdrop-blur-sm bg-background/95">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Type className="w-5 h-5" />
-                  Format Codes
-                </CardTitle>
-                <CardDescription>Add styling to your text</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {formatCodes.map((f) => (
-                    <motion.div key={f.value} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => insertCode(f.code)}
-                        className="w-full justify-start gap-2 hover:border-purple-500/50"
-                      >
-                        <span className="text-lg">{f.icon}</span>
-                        <span className="font-mono text-xs">{f.code}</span>
-                        <span className="text-xs">{f.label}</span>
-                      </Button>
-                    </motion.div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Editor */}
-          <motion.div variants={itemVariants}>
-            <Card className="border-2 backdrop-blur-sm bg-background/95">
-              <CardHeader>
-                <CardTitle>Your MOTD</CardTitle>
-                <CardDescription>
-                  Type your message and use the codes above to format it
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="motd" className="text-base">MOTD Text</Label>
-                  <Textarea
-                    id="motd"
-                    placeholder="§6Welcome to §bMy Server§r&#x0a;§aHave fun playing!"
-                    value={motdText}
-                    onChange={(e) => setMotdText(e.target.value)}
-                    className="font-mono min-h-32 text-base border-2 focus:border-primary/50"
-                  />
-                </div>
-
-                <div className="flex gap-2">
-                  <Button onClick={copyToClipboard} className="gap-2">
-                    {copied ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4" />
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        Copy to Clipboard
-                      </>
-                    )}
-                  </Button>
-                  <Button onClick={downloadAsText} variant="outline" className="gap-2">
-                    <Download className="w-4 h-4" />
-                    Download .txt
-                  </Button>
-                  <Button
-                    onClick={() => setMotdText('')}
-                    variant="outline"
-                    className="gap-2 ml-auto"
-                  >
-                    Clear
-                  </Button>
-                </div>
-
-                {motdText && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="space-y-3"
-                  >
-                    <Label className="text-base">Live Preview</Label>
-                    <div
-                      className="bg-black/90 p-6 rounded-md font-mono text-base whitespace-pre-wrap border-2 border-primary/20 min-h-24"
-                      dangerouslySetInnerHTML={{ __html: parseColorCodes(motdText) }}
+                  {/* Center Lines Option */}
+                  <div className="flex items-center space-x-2 pt-2">
+                    <Checkbox
+                      id="center"
+                      checked={centerLines}
+                      onCheckedChange={(checked) => setCenterLines(checked as boolean)}
                     />
-                    <Label className="text-base">Raw Output</Label>
-                    <div className="bg-secondary/50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap break-all border-2 border-muted">
-                      {motdText}
-                    </div>
-                  </motion.div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
+                    <Label htmlFor="center" className="flex items-center gap-2 cursor-pointer">
+                      <AlignCenter className="w-4 h-4" />
+                      Center the lines
+                    </Label>
+                  </div>
 
-          {/* Tips */}
-          <motion.div variants={itemVariants}>
-            <Card className="border-2 backdrop-blur-sm bg-background/95">
-              <CardHeader>
-                <CardTitle>💡 Quick Tips</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="flex gap-3">
-                    <Badge className="h-fit">1</Badge>
-                    <p className="text-sm">
-                      Use <code className="bg-secondary px-2 py-0.5 rounded font-mono">§</code> (section sign) before color/format codes
-                    </p>
+                  <Separator />
+
+                  {/* Formatting Toolbar */}
+                  <div className="space-y-4">
+                    <Label className="text-base font-semibold">Formatting Toolbar</Label>
+                    
+                    {/* Color Picker Section */}
+                    <div className="space-y-3">
+                      <Label className="text-sm flex items-center gap-2">
+                        <Palette className="w-4 h-4" />
+                        Colors
+                      </Label>
+                      
+                      <div className="flex flex-wrap gap-2">
+                        {COLORS.map((color) => (
+                          <Tooltip key={color.code}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => insertColorAtCursor(color.code)}
+                                className="w-10 h-10 p-0 border-2"
+                                style={{ backgroundColor: color.hex }}
+                              >
+                                <span className="sr-only">{color.name}</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{color.name} ({color.code})</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </div>
+
+                      {/* Custom Hex Color */}
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1 space-y-2">
+                          <Label htmlFor="customHex" className="text-xs flex items-center gap-1">
+                            <Hash className="w-3 h-3" />
+                            Custom Hex Color
+                          </Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="customHex"
+                              type="color"
+                              value={customHex}
+                              onChange={(e) => setCustomHex(e.target.value)}
+                              className="w-16 h-10 p-1"
+                            />
+                            <Input
+                              type="text"
+                              value={customHex}
+                              onChange={(e) => setCustomHex(e.target.value)}
+                              placeholder="#FFFFFF"
+                              className="font-mono flex-1"
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => insertColorAtCursor(hexToMinecraftColor(customHex))}
+                        >
+                          Apply
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Format Buttons */}
+                    <div className="space-y-3">
+                      <Label className="text-sm">Format Options</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {FORMATS.map((format) => (
+                          <Tooltip key={format.code}>
+                            <TooltipTrigger asChild>
+                              <Toggle
+                                variant="outline"
+                                size="sm"
+                                onClick={() => insertCode(format.code)}
+                                className="gap-2"
+                              >
+                                <span className="font-bold">{format.icon}</span>
+                                <span className="text-xs">{format.name}</span>
+                              </Toggle>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{format.description}</p>
+                              <p className="text-xs text-muted-foreground font-mono">{format.code}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Gradient Tool */}
+                    <div className="space-y-3">
+                      <Label className="text-sm flex items-center gap-2">
+                        <Wand2 className="w-4 h-4" />
+                        Gradient Tool
+                      </Label>
+                      <div className="space-y-3 p-4 border-2 border-dashed rounded-lg">
+                        <Input
+                          placeholder="Enter text for gradient"
+                          value={gradientText}
+                          onChange={(e) => setGradientText(e.target.value)}
+                          className="font-mono"
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label className="text-xs">Start Color</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                type="color"
+                                value={gradientStart}
+                                onChange={(e) => setGradientStart(e.target.value)}
+                                className="w-12 h-10 p-1"
+                              />
+                              <Input
+                                type="text"
+                                value={gradientStart}
+                                onChange={(e) => setGradientStart(e.target.value)}
+                                className="font-mono text-xs"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">End Color</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                type="color"
+                                value={gradientEnd}
+                                onChange={(e) => setGradientEnd(e.target.value)}
+                                className="w-12 h-10 p-1"
+                              />
+                              <Input
+                                type="text"
+                                value={gradientEnd}
+                                onChange={(e) => setGradientEnd(e.target.value)}
+                                className="font-mono text-xs"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          onClick={applyGradient}
+                          disabled={!gradientText}
+                          className="w-full gap-2"
+                          variant="secondary"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          Apply Gradient to Line {activeLine}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-3">
-                    <Badge className="h-fit">2</Badge>
-                    <p className="text-sm">
-                      Use <code className="bg-secondary px-2 py-0.5 rounded font-mono">\n</code> for new lines in your MOTD
-                    </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Live Preview Section */}
+            <motion.div variants={itemVariants}>
+              <Card className="border-2 backdrop-blur-sm bg-background/95">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5" />
+                    Live Preview
+                  </CardTitle>
+                  <CardDescription>
+                    Real-time preview of your MOTD as it will appear in Minecraft
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div
+                    className="bg-[#313233] p-8 rounded-md font-['Courier_New',_monospace] text-base whitespace-pre-wrap border-2 border-primary/20 min-h-32"
+                    style={{
+                      textShadow: '2px 2px 0px rgba(0,0,0,0.5)',
+                      lineHeight: '1.8',
+                    }}
+                  >
+                    <div dangerouslySetInnerHTML={{ __html: parseColorCodes(centerLines ? centerText(line1) : line1) || '<span style="color: #AAAAAA;">Line 1...</span>' }} />
+                    <div dangerouslySetInnerHTML={{ __html: parseColorCodes(centerLines ? centerText(line2) : line2) || '<span style="color: #AAAAAA;">Line 2...</span>' }} />
                   </div>
-                  <div className="flex gap-3">
-                    <Badge className="h-fit">3</Badge>
-                    <p className="text-sm">
-                      Use <code className="bg-secondary px-2 py-0.5 rounded font-mono">§r</code> to reset all formatting
-                    </p>
+
+                  <div className="flex gap-2">
+                    <Button onClick={copyToClipboard} className="gap-2">
+                      {copied ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          Copy MOTD
+                        </>
+                      )}
+                    </Button>
+                    <Button onClick={downloadAsText} variant="outline" className="gap-2">
+                      <Download className="w-4 h-4" />
+                      Download
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setLine1('');
+                        setLine2('');
+                      }}
+                      variant="outline"
+                      className="gap-2 ml-auto"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      Clear All
+                    </Button>
                   </div>
-                  <div className="flex gap-3">
-                    <Badge className="h-fit">4</Badge>
-                    <p className="text-sm">
-                      Combine color and format codes for styled text like <code className="bg-secondary px-2 py-0.5 rounded font-mono">§a§lBold Green</code>
-                    </p>
+
+                  {/* Raw Output */}
+                  <div className="space-y-2">
+                    <Label className="text-sm">Raw MOTD Code</Label>
+                    <div className="bg-secondary/50 p-4 rounded-md font-mono text-xs whitespace-pre-wrap break-all border-2 border-muted">
+                      {getFullMOTD() || 'Your MOTD will appear here...'}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Help & Tips */}
+            <motion.div variants={itemVariants}>
+              <Card className="border-2 backdrop-blur-sm bg-background/95">
+                <CardHeader>
+                  <CardTitle>💡 Quick Guide</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="flex gap-3">
+                      <Badge className="h-fit">§</Badge>
+                      <p className="text-sm">
+                        The section sign (§) is used before all color and format codes
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <Badge className="h-fit">📏</Badge>
+                      <p className="text-sm">
+                        Keep each line under 60 characters for best display
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <Badge className="h-fit">🎨</Badge>
+                      <p className="text-sm">
+                        Colors persist until reset with §r or another color
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <Badge className="h-fit">✨</Badge>
+                      <p className="text-sm">
+                        Combine formats: §a§lBold Green or §c§o§nItalic Underlined Red
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           </motion.div>
-        </motion.div>
+        </TooltipProvider>
       </div>
     </main>
   );
