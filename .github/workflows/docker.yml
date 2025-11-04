@@ -23,6 +23,7 @@ jobs:
         context: .
         file: ./Dockerfile
         push: false
+        load: true
         tags: minecraft-server-status:test
         cache-from: type=gha
         cache-to: type=gha,mode=max
