@@ -253,44 +253,95 @@ function MotdEditorContent() {
   };
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(getFormattedMOTD());
+    const motd = getFormattedMOTD();
+    navigator.clipboard.writeText(motd);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    
+    toast({
+      title: 'Copied to clipboard',
+      description: 'MOTD text has been copied',
+    });
   };
 
   const downloadAsText = () => {
-    const blob = new Blob([getFormattedMOTD()], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `motd-${exportFormat}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const blob = new Blob([getFormattedMOTD()], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `motd-${exportFormat}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: 'Download started',
+        description: `Downloading motd-${exportFormat}.txt`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Download failed',
+        description: 'Could not download the file',
+        variant: 'destructive',
+      });
+    }
   };
   
   const shareURL = () => {
-    const encoded = encodeForURL(getFullMOTD());
-    const url = `${window.location.origin}/motd-editor?text=${encoded}`;
-    navigator.clipboard.writeText(url);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
+    try {
+      const encoded = encodeForURL(getFullMOTD());
+      const url = `${window.location.origin}/motd-editor?text=${encoded}`;
+      navigator.clipboard.writeText(url);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+      
+      toast({
+        title: 'Link copied',
+        description: 'Share URL has been copied to clipboard',
+      });
+    } catch (error) {
+      toast({
+        title: 'Copy failed',
+        description: 'Could not copy the share link',
+        variant: 'destructive',
+      });
+    }
   };
   
   const getShareURL = () => {
     if (typeof window === 'undefined') return '';
-    const encoded = encodeForURL(getFullMOTD());
-    return `${window.location.origin}/motd-editor?text=${encoded}`;
+    try {
+      const encoded = encodeForURL(getFullMOTD());
+      return `${window.location.origin}/motd-editor?text=${encoded}`;
+    } catch (error) {
+      toast({
+        title: 'URL generation failed',
+        description: 'Could not generate share URL',
+        variant: 'destructive',
+      });
+      return '';
+    }
   };
   
   const loadTemplate = (template: typeof TEMPLATES[0]) => {
     setLine1(template.line1);
     setLine2(template.line2);
+    
+    toast({
+      title: 'Template loaded',
+      description: `Applied "${template.name}" template`,
+    });
   };
   
   const copyExportCode = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    
+    toast({
+      title: 'Code copied',
+      description: 'Export code has been copied to clipboard',
+    });
   };
   
   const toggleExportSection = (section: string) => {
