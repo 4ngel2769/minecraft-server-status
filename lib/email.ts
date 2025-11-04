@@ -1,4 +1,4 @@
-import { email as emailConfig } from '@/lib/config';
+import { email as emailConfig, auth } from '@/lib/config';
 
 export interface EmailOptions {
   to: string;
@@ -87,7 +87,7 @@ export async function sendServerStatusAlert(
     <h2>${online ? '✅ Server Online' : '❌ Server Offline'}</h2>
     <p>Server: <strong>${serverHost}:${serverPort}</strong></p>
     <p>Status: <strong>${online ? 'Online' : 'Offline'}</strong></p>
-    <p>Check it now at: <a href="https://yourdomain.com">Minecraft Server Status</a></p>
+    <p>Check it now at: <a href="${auth.appUrl}">Minecraft Server Status</a></p>
   `;
 
   return sendEmail({
@@ -108,7 +108,7 @@ export async function sendWelcomeEmail(
   const greeting = userName ? `Hi ${userName}` : 'Hi there';
   
   const subject = 'Welcome to Minecraft Server Status!';
-  const text = `${greeting},\n\nWelcome to Minecraft Server Status! You can now save your favorite servers and get notifications when they go online or offline.\n\nGet started: https://yourdomain.com`;
+  const text = `${greeting},\n\nWelcome to Minecraft Server Status! You can now save your favorite servers and get notifications when they go online or offline.\n\nGet started: ${auth.appUrl}`;
   const html = `
     <h2>Welcome to Minecraft Server Status!</h2>
     <p>${greeting},</p>
@@ -118,7 +118,7 @@ export async function sendWelcomeEmail(
       <li>Get real-time status updates</li>
       <li>Monitor server uptime</li>
     </ul>
-    <p><a href="https://yourdomain.com">Get started now</a></p>
+    <p><a href="${auth.appUrl}">Get started now</a></p>
   `;
 
   return sendEmail({
