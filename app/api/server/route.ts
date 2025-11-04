@@ -4,6 +4,7 @@ import {
   validateServerAddress,
   type ServerStatus,
 } from '@/lib/minecraft';
+import { checkRateLimit, isTurnstileEnabled } from '@/lib/rate-limit';
 
 // Rate limiting store: IP -> timestamp of last request
 const rateLimitMap = new Map<string, number>();
