@@ -149,8 +149,8 @@ export default function Home() {
       return;
     }
 
-    // Record cooldown
-    ClientCooldown.recordCheck(trimmedAddress);
+    // Don't record cooldown here - let the slug page handle it when it actually makes the API call
+    // This prevents the "instant cooldown" bug where users are cooled down before seeing results
     
     // Save to recent servers
     const newRecent: RecentServer = {

@@ -195,12 +195,13 @@ export default function ServerPage() {
 
   const fetchServerStatus = useCallback(async (manual: boolean = false, token?: string) => {
     try {
-      // Check cooldown before making request (both manual and auto)
+      // Check cooldown before making request
       const currentCooldown = ClientCooldown.getRemainingTime(hostname);
       if (currentCooldown > 0) {
         if (manual) {
           setError(`Please wait ${currentCooldown} seconds before checking again`);
         }
+        // Don't record check or proceed if in cooldown
         return;
       }
 
@@ -240,6 +241,8 @@ export default function ServerPage() {
           const remaining = data.remainingTime || ClientCooldown.getCooldownSeconds();
           setCooldownTime(remaining);
           setShowTurnstile(false);
+          
+          // Record check only on actual API response (server-side rate limit hit)
           ClientCooldown.recordCheck(hostname);
           
           const errorMsg = data.message || `Rate limited. Please wait ${remaining} seconds.`;
@@ -255,7 +258,7 @@ export default function ServerPage() {
           throw new Error(errorMsg);
         }
 
-        // Handle other errors
+        // Handle other errors - don't record check on error
         const errorMsg = data.message || 'Failed to fetch server status';
         const errorInfo = getServerErrorMessage(errorMsg);
         setErrorDetails(errorInfo);
