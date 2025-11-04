@@ -262,7 +262,7 @@ export default function TermsOfService() {
               If you have any questions about these Terms, please contact us:
             </p>
             <ul className="space-y-2">
-              <li><strong>Email:</strong> legal@mcserverstatus.com</li>
+              <li><strong>Email:</strong> mcserverstatus@angellabs.xyz</li>
               <li><strong>GitHub:</strong> Open an issue on our repository</li>
             </ul>
           </CardContent>

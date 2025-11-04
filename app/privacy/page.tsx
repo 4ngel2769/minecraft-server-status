@@ -199,7 +199,7 @@ export default function PrivacyPolicy() {
               If you have any questions about this Privacy Policy or our data practices, please contact us:
             </p>
             <ul className="space-y-2">
-              <li><strong>Email:</strong> privacy@mcserverstatus.com</li>
+              <li><strong>Email:</strong> mcserverstatus@angellabs.xyz</li>
               <li><strong>GitHub:</strong> Open an issue on our repository</li>
             </ul>
           </CardContent>
