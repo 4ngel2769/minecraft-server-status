@@ -720,7 +720,7 @@ export default function ServerPage() {
                     </CardHeader>
                     <CardContent>
                       <div
-                        className="bg-black/90 p-6 rounded-md font-mono text-base whitespace-pre-wrap border-2 border-primary/20 min-h-24"
+                        className="bg-black/90 p-6 rounded-md font-minecraft text-base whitespace-pre-wrap border-2 border-primary/20 min-h-24"
                         dangerouslySetInnerHTML={{ __html: serverData.motd.html }}
                       />
                     </CardContent>
