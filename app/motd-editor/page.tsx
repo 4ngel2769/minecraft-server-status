@@ -17,6 +17,11 @@ import {
   Wand2,
   Share2,
   FileCode,
+  ChevronDown,
+  ChevronUp,
+  Link,
+  Upload,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
