@@ -706,6 +706,38 @@ Motd:
                     </div>
                   )}
 
+                  {/* Length Validation Warning */}
+                  {lengthValidation.error && (
+                    <div className={`border-2 rounded-md p-3 ${
+                      lengthValidation.valid 
+                        ? 'bg-yellow-500/10 border-yellow-500/50' 
+                        : 'bg-destructive/10 border-destructive/50'
+                    }`}>
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className={`w-4 h-4 mt-0.5 ${
+                          lengthValidation.valid ? 'text-yellow-500' : 'text-destructive'
+                        }`} />
+                        <div className="flex-1">
+                          <p className={`text-sm font-semibold mb-1 ${
+                            lengthValidation.valid ? 'text-yellow-500' : 'text-destructive'
+                          }`}>
+                            {lengthValidation.valid ? '⚠️ Length Warning' : '❌ Text Too Long'}
+                          </p>
+                          <p className={`text-xs ${
+                            lengthValidation.valid ? 'text-yellow-600 dark:text-yellow-400' : 'text-destructive'
+                          }`}>
+                            {lengthValidation.error}
+                          </p>
+                          <p className={`text-xs mt-1 font-mono ${
+                            lengthValidation.valid ? 'text-yellow-600 dark:text-yellow-400' : 'text-destructive'
+                          }`}>
+                            {getFullMOTD().length} / 256 characters
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Export Format Selector */}
                   <div className="space-y-2">
                     <Label className="text-sm flex items-center gap-2">
