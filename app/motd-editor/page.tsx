@@ -36,6 +36,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { parseColorCodes } from '@/lib/minecraft';
 import {
   parseMinecraftColors,
@@ -94,6 +95,46 @@ const FORMATS = [
   { name: 'Reset', code: '§r', icon: '↺', description: 'Reset all formatting' },
 ];
 
+// MOTD Templates
+const TEMPLATES = [
+  {
+    name: 'Simple Welcome',
+    description: 'Clean and simple welcome message',
+    line1: '§6Welcome to §bMy Server',
+    line2: '§aHave fun playing!',
+  },
+  {
+    name: 'Gradient Rainbow',
+    description: 'Eye-catching rainbow gradient',
+    line1: '§x§F§F§5§5§5§5R§x§F§F§8§8§5§5a§x§F§F§B§B§5§5i§x§F§F§E§E§5§5n§x§F§F§F§F§5§5b§x§5§5§F§F§5§5o§x§5§5§F§F§F§Fw §x§5§5§5§5§F§FS§x§8§8§5§5§F§Fe§x§B§B§5§5§F§Fr§x§E§E§5§5§F§Fv§x§F§F§5§5§F§Fe§x§F§F§5§5§8§8r',
+    line2: '§7Version 1.20 §8• §aSurvival §8• §bCreative',
+  },
+  {
+    name: 'Professional',
+    description: 'Professional gaming server',
+    line1: '§8[§6§lPREMIUM§8] §f§lMY SERVER §8[§6§lPREMIUM§8]',
+    line2: '§7Join now for §a§l$5 OFF §7your first rank!',
+  },
+  {
+    name: 'Minecraft Classic',
+    description: 'Classic Minecraft style',
+    line1: '§2§l-=- §a§lSurvival Server §2§l-=-',
+    line2: '§7Now with §6Custom Enchants §7and §bCrates',
+  },
+  {
+    name: 'Event Announcement',
+    description: 'Special event promotion',
+    line1: '§c§l⚡ §6§lDOUBLE XP WEEKEND §c§l⚡',
+    line2: '§eNov 4-6 §8| §aJoin now and level up!',
+  },
+  {
+    name: 'Seasonal Theme',
+    description: 'Holiday or seasonal message',
+    line1: '§x§F§F§D§7§0§0❄ §b§lWinter Update §x§F§F§D§7§0§0❄',
+    line2: '§fNew snow biomes §8• §bIce dungeons §8• §aSki racing',
+  },
+];
+
 function MotdEditorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -101,7 +142,13 @@ function MotdEditorContent() {
   const [line2, setLine2] = useState('');
   const [centerLines, setCenterLines] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [activeLine, setActiveLine] = useState<1 | 2>(1);
+  
+  // Collapsible states
+  const [exportExpanded, setExportExpanded] = useState<string[]>([]);
+  const [shareExpanded, setShareExpanded] = useState(true);
+  const [templatesExpanded, setTemplatesExpanded] = useState(false);
   
   // Gradient tool state
   const [gradientStart, setGradientStart] = useState('#FF5555');
