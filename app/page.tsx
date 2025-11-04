@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { GradientBackground } from '@/components/animate-ui/components/backgrounds/gradient';
+import { FavoritesSection } from '@/components/favorites-section';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
@@ -454,6 +455,11 @@ export default function Home() {
           </motion.div>
         </section>
       )}
+
+      {/* Favorites Section */}
+      <section className="container mx-auto px-4 py-12">
+        <FavoritesSection />
+      </section>
 
       {/* CTA Section */}
       <section className="container mx-auto px-4 py-20 pb-32">
