@@ -3,6 +3,11 @@ const nextConfig = {
   // Enable standalone output for Docker
   output: 'standalone',
   
+  // Enable instrumentation for server startup tasks
+  experimental: {
+    instrumentationHook: true,
+  },
+  
   images: {
     remotePatterns: [
       {

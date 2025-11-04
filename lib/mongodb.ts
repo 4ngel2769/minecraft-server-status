@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
+import { database } from '@/lib/config';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://100.100.1.3:27017/mcsrv_dev?authSource=admin';
+const MONGODB_URI = database.mongodbUri;
 
 if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable');

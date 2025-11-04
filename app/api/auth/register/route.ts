@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
+import { features } from '@/lib/config';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if user registration is enabled
+    if (!features.userRegistration) {
+      return NextResponse.json(
+        { error: 'User registration is currently disabled' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { email, password, name } = body;
 

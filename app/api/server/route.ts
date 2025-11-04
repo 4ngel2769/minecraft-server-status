@@ -5,9 +5,11 @@ import {
   type ServerStatus,
 } from '@/lib/minecraft';
 import { 
-  checkRateLimit as checkCombinedRateLimit, 
+  checkRateLimit as checkCombinedRateLimit,
+  checkIpHourlyRateLimit,
   isTurnstileEnabled 
 } from '@/lib/rate-limit';
+import { getCachedStatus, cacheStatus, isCacheEnabled } from '@/lib/server-cache';
 
 // Remove old rate limiting code - now handled by rate-limit.ts
 
@@ -130,7 +132,20 @@ export async function POST(request: NextRequest) {
     // Get client IP for rate limiting
     const clientIp = getClientIp(request);
 
-    // Check rate limit (IP + hostname combined)
+    // Check hourly rate limit first
+    const hourlyLimit = checkIpHourlyRateLimit(clientIp);
+    if (!hourlyLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Hourly rate limit exceeded',
+          message: `Too many requests this hour. Please try again in ${Math.ceil((hourlyLimit.remainingTime || 0) / 60)} minutes.`,
+          remainingTime: hourlyLimit.remainingTime,
+        },
+        { status: 429 }
+      );
+    }
+
+    // Check combined rate limit (IP + hostname)
     const rateLimitCheck = checkCombinedRateLimit(clientIp, hostname);
     if (!rateLimitCheck.allowed) {
       return NextResponse.json(
@@ -142,6 +157,16 @@ export async function POST(request: NextRequest) {
         },
         { status: 429 }
       );
+    }
+
+    // Check cache first (if enabled)
+    const cachedStatus = getCachedStatus(hostname, port, isBedrock);
+    if (cachedStatus) {
+      return NextResponse.json({
+        ...cachedStatus,
+        cached: true,
+        cacheEnabled: isCacheEnabled(),
+      });
     }
 
     // Fetch server status
@@ -234,6 +259,9 @@ export async function POST(request: NextRequest) {
       },
       serverType: isBedrock ? 'bedrock' : 'java',
     };
+
+    // Cache the successful response (if caching is enabled)
+    cacheStatus(hostname, port, isBedrock, serverStatus);
 
     // Format response
     const response = {
