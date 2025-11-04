@@ -119,6 +119,44 @@ export default function ServerPage() {
   const defaultPort = isBedrock ? 19132 : 25565;
   const actualPort = port ? parseInt(port) : defaultPort;
 
+  // Check cooldown on load and when hostname changes
+  useEffect(() => {
+    const remaining = ClientCooldown.getRemainingTime(hostname);
+    setCooldownTime(remaining);
+    
+    // Show Turnstile only after cooldown expires (if enabled)
+    if (remaining === 0 && ENABLE_TURNSTILE) {
+      setShowTurnstile(true);
+    }
+  }, [hostname]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (cooldownTime > 0) {
+      const timer = setInterval(() => {
+        const remaining = ClientCooldown.getRemainingTime(hostname);
+        setCooldownTime(remaining);
+        
+        if (remaining === 0) {
+          if (ENABLE_TURNSTILE) {
+            setShowTurnstile(true);
+          }
+          clearInterval(timer);
+        }
+      }, 1000);
+      
+      return () => clearInterval(timer);
+    }
+  }, [cooldownTime, hostname]);
+
+  // Check for token in URL params (from home page navigation)
+  useEffect(() => {
+    const token = searchParams.get('token');
+    if (token) {
+      setTurnstileToken(token);
+    }
+  }, [searchParams]);
+
   const fetchServerStatus = useCallback(async (manual: boolean = false, token?: string) => {
     try {
       if (manual) setRefreshing(true);
