@@ -281,6 +281,20 @@ export default function ServerPage() {
       <GradientBackground />
 
       <div className="relative z-10 container mx-auto px-4 py-8">
+        {/* Breadcrumbs */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4 }}
+          className="mb-6"
+        >
+          <Breadcrumbs
+            items={[
+              { label: 'Server Status', href: `#${hostname}` }
+            ]}
+          />
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
