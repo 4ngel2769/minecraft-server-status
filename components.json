@@ -19,7 +19,6 @@
   },
   "registries": {
     "@animate-ui": "https://animate-ui.com/r/{name}.json",
-    "@elements": "https://www.tryelements.dev/r/registry.json",
     "@kokonutui": "https://kokonutui.com/r/{name}.json"
   }
 }
