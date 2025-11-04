@@ -1,0 +1,56 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run linting
+      run: npm run lint
+
+    - name: Build application
+      run: npm run build
+      env:
+        # Set minimal required environment variables for build
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.NEXT_PUBLIC_TURNSTILE_SITE_KEY || 'dummy-key' }}
+        NEXT_PUBLIC_GA_MEASUREMENT_ID: ${{ secrets.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'dummy-id' }}
+        NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN || 'dummy-dsn' }}
+        NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL || 'http://localhost:3000' }}
+        NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'dummy-secret' }}
+        MONGODB_URI: ${{ secrets.MONGODB_URI || 'mongodb://localhost:27017/test' }}
+        EMAIL_FROM_EMAIL: ${{ secrets.EMAIL_FROM_EMAIL || 'test@example.com' }}
+        EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST || 'smtp.example.com' }}
+        EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT || '587' }}
+        EMAIL_SMTP_USER: ${{ secrets.EMAIL_SMTP_USER || 'test@example.com' }}
+        EMAIL_SMTP_PASS: ${{ secrets.EMAIL_SMTP_PASS || 'dummy-password' }}
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL || 'https://discord.com/api/webhooks/dummy' }}
+        APP_URL: ${{ secrets.APP_URL || 'http://localhost:3000' }}
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nextjs-build-files
+        path: .next/
+        retention-days: 7

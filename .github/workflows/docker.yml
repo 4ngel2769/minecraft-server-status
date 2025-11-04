@@ -1,0 +1,105 @@
+name: Docker Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  docker-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: false
+        tags: minecraft-server-status:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ secrets.NEXT_PUBLIC_TURNSTILE_SITE_KEY || 'dummy-key' }}
+          NEXT_PUBLIC_GA_MEASUREMENT_ID=${{ secrets.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'dummy-id' }}
+          NEXT_PUBLIC_SENTRY_DSN=${{ secrets.NEXT_PUBLIC_SENTRY_DSN || 'dummy-dsn' }}
+
+    - name: Create test network
+      run: docker network create test-network
+
+    - name: Start MongoDB for testing
+      run: |
+        docker run -d \
+          --name mongodb-test \
+          --network test-network \
+          -e MONGO_INITDB_ROOT_USERNAME=testuser \
+          -e MONGO_INITDB_ROOT_PASSWORD=testpass \
+          -e MONGO_INITDB_DATABASE=mcsrv_test \
+          -p 27017:27017 \
+          mongo:7-jammy
+
+    - name: Wait for MongoDB to be ready
+      run: |
+        timeout 60 bash -c 'until docker exec mongodb-test mongo --eval "db.adminCommand({ping: 1})" --quiet; do sleep 2; done'
+
+    - name: Run Docker container
+      run: |
+        docker run -d \
+          --name minecraft-server-status \
+          --network test-network \
+          -e MONGODB_URI=mongodb://testuser:testpass@mongodb-test:27017/mcsrv_test \
+          -e NEXTAUTH_URL=http://localhost:3000 \
+          -e NEXTAUTH_SECRET=test-secret-key-for-testing-only \
+          -e APP_URL=http://localhost:3000 \
+          -e EMAIL_FROM_EMAIL=test@example.com \
+          -e EMAIL_SMTP_HOST=localhost \
+          -e EMAIL_SMTP_PORT=587 \
+          -e EMAIL_SMTP_USER=test@example.com \
+          -e EMAIL_SMTP_PASS=dummy-password \
+          -e DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/dummy \
+          -p 3000:3000 \
+          minecraft-server-status:test
+
+    - name: Wait for application to start
+      run: |
+        timeout 120 bash -c 'until curl -f http://localhost:3000 > /dev/null 2>&1; do sleep 5; done'
+
+    - name: Test application health
+      run: |
+        # Test homepage
+        curl -f -s http://localhost:3000 | grep -q "Minecraft Server Status" || exit 1
+        echo "✅ Homepage loads successfully"
+
+        # Test API docs page
+        curl -f -s http://localhost:3000/docs/api | grep -q "API Documentation" || exit 1
+        echo "✅ API docs page loads successfully"
+
+        # Test server API endpoint (should return error without proper params, but should respond)
+        curl -s http://localhost:3000/api/server | grep -q "error\|Bad Request" || exit 1
+        echo "✅ API server endpoint responds"
+
+        # Test health check
+        docker exec minecraft-server-status node -e "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
+        echo "✅ Health check passes"
+
+    - name: Show container logs
+      if: always()
+      run: |
+        echo "=== Application Logs ==="
+        docker logs minecraft-server-status || true
+        echo "=== MongoDB Logs ==="
+        docker logs mongodb-test || true
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker stop minecraft-server-status mongodb-test || true
+        docker rm minecraft-server-status mongodb-test || true
+        docker network rm test-network || true
