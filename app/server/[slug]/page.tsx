@@ -20,6 +20,7 @@ import {
   ChevronUp,
   Edit,
   Bug,
+  AlertTriangle,
 } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { Button } from '@/components/ui/button';
@@ -28,10 +29,11 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-// import { ThemeToggle } from '@/components/theme-toggle';
 import { GradientBackground } from '@/components/animate-ui/components/backgrounds/gradient';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { ClientCooldown } from '@/lib/rate-limit';
+import { useToast } from '@/hooks/use-toast';
+import { validateHostname, validatePort, getServerErrorMessage, parseAPIError } from '@/lib/validation';
 
 // Server response type from API
 interface ServerResponse {
@@ -102,18 +104,51 @@ export default function ServerPage() {
   const [serverData, setServerData] = useState<ServerResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<{ title: string; message: string; suggestion: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [debugOpen, setDebugOpen] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [showTurnstile, setShowTurnstile] = useState(false);
   const [cooldownTime, setCooldownTime] = useState(0);
+  const { toast } = useToast();
 
   // Parse slug: "hostname" or "hostname:port"
   const slug = decodeURIComponent(params.slug as string);
   const [hostname, port] = slug.includes(':')
     ? slug.split(':')
     : [slug, ''];
+
+  // Validate inputs on load
+  useEffect(() => {
+    const hostnameValidation = validateHostname(hostname);
+    if (!hostnameValidation.valid) {
+      setError(hostnameValidation.error || 'Invalid hostname');
+      setErrorDetails(getServerErrorMessage(hostnameValidation.error || 'Invalid hostname'));
+      setLoading(false);
+      toast({
+        title: 'Invalid hostname',
+        description: hostnameValidation.error,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (port) {
+      const portValidation = validatePort(port);
+      if (!portValidation.valid) {
+        setError(portValidation.error || 'Invalid port');
+        setErrorDetails(getServerErrorMessage(portValidation.error || 'Invalid port'));
+        setLoading(false);
+        toast({
+          title: 'Invalid port',
+          description: portValidation.error,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+  }, [hostname, port, toast]);
 
   // Determine if Bedrock based on port
   const isBedrock = port ? parseInt(port) === 19132 : false;
@@ -180,6 +215,10 @@ export default function ServerPage() {
       if (manual) setRefreshing(true);
       else setLoading(true);
 
+      // Clear previous errors
+      setError(null);
+      setErrorDetails(null);
+
       const response = await fetch('/api/server', {
         method: 'POST',
         headers: {
@@ -201,11 +240,33 @@ export default function ServerPage() {
           const remaining = data.remainingTime || ClientCooldown.getCooldownSeconds();
           setCooldownTime(remaining);
           setShowTurnstile(false);
-          // Record the failed check to prevent immediate retry
           ClientCooldown.recordCheck(hostname);
-          throw new Error(data.message || `Rate limited. Please wait ${remaining} seconds.`);
+          
+          const errorMsg = data.message || `Rate limited. Please wait ${remaining} seconds.`;
+          const errorInfo = getServerErrorMessage(errorMsg);
+          setErrorDetails(errorInfo);
+          
+          toast({
+            title: 'Rate limit exceeded',
+            description: `Please wait ${remaining} second${remaining !== 1 ? 's' : ''} before trying again`,
+            variant: 'destructive',
+          });
+          
+          throw new Error(errorMsg);
         }
-        throw new Error(data.message || 'Failed to fetch server status');
+
+        // Handle other errors
+        const errorMsg = data.message || 'Failed to fetch server status';
+        const errorInfo = getServerErrorMessage(errorMsg);
+        setErrorDetails(errorInfo);
+        
+        toast({
+          title: errorInfo.title,
+          description: errorInfo.message,
+          variant: 'destructive',
+        });
+        
+        throw new Error(errorMsg);
       }
 
       // Only record check time on successful request
@@ -213,17 +274,34 @@ export default function ServerPage() {
       
       setServerData(data);
       setError(null);
+      setErrorDetails(null);
       setShowTurnstile(false);
+      
+      // Show success toast for manual checks
+      if (manual) {
+        toast({
+          title: 'Server status updated',
+          description: data.server.online ? `${hostname} is online` : `${hostname} appears to be offline`,
+        });
+      }
       
       // Reset turnstile for next check
       setTurnstileToken(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch server status');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to fetch server status';
+      setError(errorMsg);
+      
+      // Parse and set error details if not already set
+      if (!errorDetails) {
+        const parsedError = parseAPIError(err);
+        const errorInfo = getServerErrorMessage(parsedError.message);
+        setErrorDetails(errorInfo);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [hostname, actualPort, isBedrock, turnstileToken]);
+  }, [hostname, actualPort, isBedrock, turnstileToken, toast, errorDetails]);
 
   useEffect(() => {
     fetchServerStatus();
@@ -241,6 +319,11 @@ export default function ServerPage() {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    
+    toast({
+      title: 'Copied to clipboard',
+      description: text,
+    });
   };
 
   const handleTurnstileVerify = (token: string) => {
@@ -440,35 +523,76 @@ export default function ServerPage() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
             >
-              <Card className="border-destructive/50 bg-destructive/10">
+              <Card className="border-2 border-destructive/50 bg-destructive/5 backdrop-blur-sm">
                 <CardContent className="pt-6">
-                  <div className="text-center py-8 space-y-4">
-                    <p className="text-destructive font-medium">{error}</p>
+                  <div className="space-y-6">
+                    {/* Error Icon and Title */}
+                    <div className="flex items-start gap-4">
+                      <div className="flex-shrink-0">
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-destructive/20 blur-xl rounded-full" />
+                          <AlertTriangle className="w-12 h-12 text-destructive relative z-10" />
+                        </div>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <h3 className="text-2xl font-bold text-destructive">
+                          {errorDetails?.title || 'Error'}
+                        </h3>
+                        <p className="text-lg font-medium text-foreground">
+                          {errorDetails?.message || error}
+                        </p>
+                        {errorDetails?.suggestion && (
+                          <p className="text-sm text-muted-foreground border-l-4 border-muted pl-4 py-2">
+                            <strong>Suggestion:</strong> {errorDetails.suggestion}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                     
                     {/* Show Turnstile if needed */}
                     {showTurnstile && ENABLE_TURNSTILE && TURNSTILE_SITE_KEY && cooldownTime === 0 && (
-                      <div className="flex justify-center">
-                        <Turnstile
-                          siteKey={TURNSTILE_SITE_KEY}
-                          onSuccess={(token) => {
-                            setTurnstileToken(token);
-                            setError(null);
-                            fetchServerStatus(true, token);
-                          }}
-                          onError={() => setTurnstileToken(null)}
-                          onExpire={() => setTurnstileToken(null)}
-                        />
+                      <div className="border-t pt-6">
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Shield className="w-4 h-4" />
+                            <span>Please complete the verification to continue:</span>
+                          </div>
+                          <div className="flex justify-center">
+                            <Turnstile
+                              siteKey={TURNSTILE_SITE_KEY}
+                              onSuccess={(token) => {
+                                setTurnstileToken(token);
+                                setError(null);
+                                setErrorDetails(null);
+                                fetchServerStatus(true, token);
+                              }}
+                              onError={() => setTurnstileToken(null)}
+                              onExpire={() => setTurnstileToken(null)}
+                            />
+                          </div>
+                        </div>
                       </div>
                     )}
                     
-                    <Button
-                      variant="outline"
-                      className="mt-4"
-                      onClick={() => fetchServerStatus(true)}
-                      disabled={cooldownTime > 0 || (ENABLE_TURNSTILE && !turnstileToken)}
-                    >
-                      {cooldownTime > 0 ? `Wait ${cooldownTime}s...` : 'Try Again'}
-                    </Button>
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 justify-center border-t pt-6">
+                      <Button
+                        variant="outline"
+                        onClick={() => router.push('/')}
+                        className="gap-2"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        Back to Home
+                      </Button>
+                      <Button
+                        onClick={() => fetchServerStatus(true)}
+                        disabled={cooldownTime > 0 || (ENABLE_TURNSTILE && !turnstileToken && showTurnstile)}
+                        className="gap-2"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        {cooldownTime > 0 ? `Wait ${cooldownTime}s...` : 'Try Again'}
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
