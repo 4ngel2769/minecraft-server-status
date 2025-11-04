@@ -90,9 +90,14 @@ interface ServerResponse {
   };
 }
 
+// Get environment configuration
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
+const ENABLE_TURNSTILE = process.env.NEXT_PUBLIC_ENABLE_TURNSTILE === 'true';
+
 export default function ServerPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [serverData, setServerData] = useState<ServerResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +106,7 @@ export default function ServerPage() {
   const [debugOpen, setDebugOpen] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [showTurnstile, setShowTurnstile] = useState(false);
+  const [cooldownTime, setCooldownTime] = useState(0);
 
   // Parse slug: "hostname" or "hostname:port"
   const slug = decodeURIComponent(params.slug as string);
