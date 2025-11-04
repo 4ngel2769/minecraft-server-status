@@ -164,11 +164,18 @@ function MotdEditorContent() {
   // Load MOTD from URL query params if present
   useEffect(() => {
     const motd = searchParams.get('motd');
-    if (motd) {
-      const decoded = decodeFromURL(motd);
-      const lines = decoded.split('\n');
-      setLine1(lines[0] || '');
-      setLine2(lines[1] || '');
+    const text = searchParams.get('text');
+    const encodedMotd = motd || text;
+    
+    if (encodedMotd) {
+      try {
+        const decoded = decodeFromURL(encodedMotd);
+        const lines = decoded.split('\n');
+        setLine1(lines[0] || '');
+        setLine2(lines[1] || '');
+      } catch (error) {
+        console.error('Failed to decode MOTD from URL:', error);
+      }
     }
   }, [searchParams]);
 
