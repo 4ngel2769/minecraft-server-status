@@ -262,9 +262,9 @@ export async function checkBedrockServer(
         : undefined,
       motd: data.motd
         ? {
-            raw: [data.motd.raw] || [],
+            raw: data.motd.raw ? [data.motd.raw] : [],
             html: data.motd.html || '',
-            clean: [data.motd.clean] || [],
+            clean: data.motd.clean ? [data.motd.clean] : [],
           }
         : undefined,
       ping: latency,
