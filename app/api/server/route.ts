@@ -4,11 +4,12 @@ import {
   validateServerAddress,
   type ServerStatus,
 } from '@/lib/minecraft';
-import { checkRateLimit, isTurnstileEnabled } from '@/lib/rate-limit';
+import { 
+  checkRateLimit as checkCombinedRateLimit, 
+  isTurnstileEnabled 
+} from '@/lib/rate-limit';
 
-// Rate limiting store: IP -> timestamp of last request
-const rateLimitMap = new Map<string, number>();
-const RATE_LIMIT_MS = 10000; // 10 seconds
+// Remove old rate limiting code - now handled by rate-limit.ts
 
 /**
  * Verify Cloudflare Turnstile token
