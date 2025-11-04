@@ -1,7 +1,7 @@
 # Multi-stage build for optimized production image
 
 # Stage 1: Dependencies
-FROM node:22.21-bookworm-slim AS deps
+FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
@@ -10,22 +10,20 @@ COPY package.json package-lock.json* ./
 RUN npm ci
 
 # Stage 2: Builder
-FROM node:22.21-bookworm-slim AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build arguments for environment variables
+# Build arguments for public environment variables only
 ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY
-ARG TURNSTILE_SECRET_KEY
 ARG NEXT_PUBLIC_GA_MEASUREMENT_ID
 ARG NEXT_PUBLIC_SENTRY_DSN
 
-# Set environment variables for build
+# Set environment variables for build (public only)
 ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_KEY
-ENV TURNSTILE_SECRET_KEY=$TURNSTILE_SECRET_KEY
 ENV NEXT_PUBLIC_GA_MEASUREMENT_ID=$NEXT_PUBLIC_GA_MEASUREMENT_ID
 ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 ENV NEXT_TELEMETRY_DISABLED=1
