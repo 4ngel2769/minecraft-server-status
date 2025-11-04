@@ -3,6 +3,12 @@ import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import { features } from '@/lib/config';
+import { 
+  sanitizeString, 
+  validateEmail, 
+  validatePassword, 
+  validateName 
+} from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,36 +21,53 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { email, password, name } = body;
+    const { email: rawEmail, password, name: rawName } = body;
 
-    // Validation
-    if (!email || !password) {
+    // Validate and sanitize inputs
+    if (!rawEmail || !password) {
       return NextResponse.json(
         { error: 'Email and password are required' },
         { status: 400 }
       );
     }
 
-    if (password.length < 6) {
+    // Sanitize email
+    const email = sanitizeString(rawEmail).toLowerCase();
+
+    // Validate email format
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
       return NextResponse.json(
-        { error: 'Password must be at least 6 characters long' },
+        { error: emailValidation.error || 'Invalid email format' },
         { status: 400 }
       );
     }
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    // Validate password strength
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
       return NextResponse.json(
-        { error: 'Invalid email format' },
+        { error: passwordValidation.errors[0] || 'Invalid password' },
         { status: 400 }
       );
+    }
+
+    // Validate and sanitize name (optional)
+    let name = rawName ? sanitizeString(rawName) : undefined;
+    if (name) {
+      const nameValidation = validateName(name);
+      if (!nameValidation.valid) {
+        return NextResponse.json(
+          { error: nameValidation.error || 'Invalid name format' },
+          { status: 400 }
+        );
+      }
     }
 
     await dbConnect();
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return NextResponse.json(
         { error: 'User with this email already exists' },
