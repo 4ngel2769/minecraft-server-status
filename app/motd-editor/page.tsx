@@ -337,6 +337,12 @@ Motd:
               <p className="text-lg text-muted-foreground">
                 Design your Minecraft server&apos;s Message of the Day
               </p>
+              {searchParams.get('motd') || searchParams.get('text') ? (
+                <Badge variant="secondary" className="gap-2">
+                  <Upload className="w-3 h-3" />
+                  Loaded from URL
+                </Badge>
+              ) : null}
             </motion.div>
 
             {/* Text Editor Section */}
