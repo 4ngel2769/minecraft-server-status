@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Server, Zap, Eye, Code, Clock, Activity, Users } from 'lucide-react';
+import { Search, Server, Zap, Eye, Code, Clock, Activity, Users, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +12,8 @@ import { GradientBackground } from '@/components/animate-ui/components/backgroun
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
+import { Turnstile } from '@marsidev/react-turnstile';
+import { ClientCooldown } from '@/lib/rate-limit';
 
 interface RecentServer {
   address: string;
@@ -19,10 +21,18 @@ interface RecentServer {
   isBedrock: boolean;
 }
 
+// Get environment configuration
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
+const ENABLE_TURNSTILE = process.env.NEXT_PUBLIC_ENABLE_TURNSTILE === 'true';
+
 export default function Home() {
   const [serverAddress, setServerAddress] = useState('');
   const [isBedrock, setIsBedrock] = useState(false);
   const [recentServers, setRecentServers] = useState<RecentServer[]>([]);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [showTurnstile, setShowTurnstile] = useState(false);
+  const [cooldownTime, setCooldownTime] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
   // Load recent servers from localStorage
@@ -33,9 +43,54 @@ export default function Home() {
     }
   }, []);
 
+  // Check cooldown when server address changes
+  useEffect(() => {
+    if (serverAddress.trim()) {
+      const remaining = ClientCooldown.getRemainingTime(serverAddress);
+      setCooldownTime(remaining);
+      
+      // Show Turnstile only after cooldown expires (if enabled)
+      if (remaining === 0 && ENABLE_TURNSTILE) {
+        setShowTurnstile(true);
+      } else {
+        setShowTurnstile(false);
+        setTurnstileToken(null);
+      }
+    }
+  }, [serverAddress]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (cooldownTime > 0) {
+      const timer = setInterval(() => {
+        const remaining = ClientCooldown.getRemainingTime(serverAddress);
+        setCooldownTime(remaining);
+        
+        if (remaining === 0) {
+          if (ENABLE_TURNSTILE) {
+            setShowTurnstile(true);
+          }
+          clearInterval(timer);
+        }
+      }, 1000);
+      
+      return () => clearInterval(timer);
+    }
+  }, [cooldownTime, serverAddress]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (serverAddress.trim()) {
+      // Check if Turnstile is required
+      if (ENABLE_TURNSTILE && !turnstileToken) {
+        // Show Turnstile if not already shown
+        setShowTurnstile(true);
+        return;
+      }
+
+      // Record cooldown
+      ClientCooldown.recordCheck(serverAddress);
+      
       // Save to recent servers
       const newRecent: RecentServer = {
         address: serverAddress,
@@ -46,10 +101,20 @@ export default function Home() {
       setRecentServers(updated);
       localStorage.setItem('recentServers', JSON.stringify(updated));
 
-      // Navigate to server page
+      // Navigate to server page with turnstile token if needed
       const slug = encodeURIComponent(serverAddress);
-      router.push(`/server/${slug}?bedrock=${isBedrock}`);
+      const params = new URLSearchParams({
+        bedrock: isBedrock.toString(),
+        ...(turnstileToken && { token: turnstileToken }),
+      });
+      router.push(`/server/${slug}?${params.toString()}`);
     }
+  };
+
+  const canSubmit = () => {
+    if (cooldownTime > 0) return false;
+    if (ENABLE_TURNSTILE && !turnstileToken) return false;
+    return serverAddress.trim().length > 0;
   };
 
   const features = [
@@ -167,18 +232,61 @@ export default function Home() {
                       </Label>
                     </div>
 
+                    {/* Turnstile Widget */}
+                    {showTurnstile && ENABLE_TURNSTILE && TURNSTILE_SITE_KEY && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="flex justify-center"
+                      >
+                        <Turnstile
+                          siteKey={TURNSTILE_SITE_KEY}
+                          onSuccess={(token) => setTurnstileToken(token)}
+                          onError={() => setTurnstileToken(null)}
+                          onExpire={() => setTurnstileToken(null)}
+                        />
+                      </motion.div>
+                    )}
+
+                    {/* Cooldown Message */}
+                    {cooldownTime > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-yellow-500/10 border-2 border-yellow-500/50 rounded-xl p-4 text-center"
+                      >
+                        <Clock className="w-5 h-5 inline-block mr-2 text-yellow-600 dark:text-yellow-400" />
+                        <span className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
+                          You can check again in {cooldownTime} second{cooldownTime !== 1 ? 's' : ''}
+                        </span>
+                      </motion.div>
+                    )}
+
                     <Button 
                       type="submit" 
                       size="lg" 
-                      className="w-full h-14 text-lg rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                      disabled={!canSubmit()}
+                      className="w-full h-14 text-lg rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Search className="w-5 h-5 mr-2" />
-                      Check Server Status
+                      {cooldownTime > 0 
+                        ? `Wait ${cooldownTime}s...` 
+                        : ENABLE_TURNSTILE && !turnstileToken && showTurnstile
+                          ? 'Complete verification above'
+                          : 'Check Server Status'
+                      }
                     </Button>
 
                     <p className="text-xs text-center text-muted-foreground">
                       <Clock className="w-3 h-3 inline mr-1" />
                       Default ports: Java (25565), Bedrock (19132)
+                      {ENABLE_TURNSTILE && (
+                        <>
+                          {' • '}
+                          <Shield className="w-3 h-3 inline mr-1" />
+                          Protected by Cloudflare Turnstile
+                        </>
+                      )}
                     </p>
                   </div>
                 </form>
