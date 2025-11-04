@@ -27,8 +27,8 @@ const footerLinks = {
 
   const socialLinks = [
     { icon: Github, href: 'https://github.com/4ngel2769', label: 'GitHub' },
-    { icon: Twitter, href: 'https://twitter.com/4ngel2769', label: 'Twitter' },
-    { icon: Mail, href: 'mailto:contact@example.com', label: 'Email' },
+    { icon: Twitter, href: 'https://x.com/4ngel2769', label: 'Twitter' },
+    { icon: Mail, href: 'mailto:mcsrv@angellabs.xyz', label: 'Email' },
   ];
 
   return (
@@ -147,7 +147,7 @@ const footerLinks = {
             </p>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Code2 className="w-3 h-3" />
-              <span>Open Source • MIT License</span>
+              <span>Open Source • MIT</span>
             </div>
           </div>
         </div>
