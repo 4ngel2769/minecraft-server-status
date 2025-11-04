@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'motion/react';
 import {
@@ -76,7 +76,7 @@ const FORMATS = [
   { name: 'Reset', code: '§r', icon: '↺', description: 'Reset all formatting' },
 ];
 
-export default function MotdEditorPage() {
+function MotdEditorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [line1, setLine1] = useState('');
@@ -574,5 +574,17 @@ export default function MotdEditorPage() {
         </TooltipProvider>
       </div>
     </main>
+  );
+}
+
+export default function MotdEditorPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary"></div>
+      </div>
+    }>
+      <MotdEditorContent />
+    </Suspense>
   );
 }
