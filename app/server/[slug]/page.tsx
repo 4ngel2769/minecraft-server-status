@@ -222,9 +222,15 @@ export default function ServerPage() {
 
   useEffect(() => {
     fetchServerStatus();
-    const interval = setInterval(() => fetchServerStatus(), 30000);
+    const interval = setInterval(() => {
+      // Only auto-refresh if not in cooldown
+      const remaining = ClientCooldown.getRemainingTime(hostname);
+      if (remaining === 0) {
+        fetchServerStatus();
+      }
+    }, 30000);
     return () => clearInterval(interval);
-  }, [fetchServerStatus]);
+  }, [fetchServerStatus, hostname]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
