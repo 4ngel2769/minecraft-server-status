@@ -251,6 +251,7 @@ function MotdEditorContent() {
   };
   
   const getShareURL = () => {
+    if (typeof window === 'undefined') return '';
     const encoded = encodeForURL(getFullMOTD());
     return `${window.location.origin}/motd-editor?text=${encoded}`;
   };
