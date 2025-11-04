@@ -22,6 +22,7 @@ import {
   Link,
   Upload,
   Zap,
+  AlertCircle,
 } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,8 @@ import {
   validateMOTD,
 } from '@/lib/motd-formatter';
 import { GradientBackground } from '@/components/animate-ui/components/backgrounds/gradient';
+import { useToast } from '@/hooks/use-toast';
+import { validateMOTDLength, validateMOTDURLParams, validateColorCode } from '@/lib/validation';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -138,6 +141,7 @@ const TEMPLATES = [
 function MotdEditorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const [line1, setLine1] = useState('');
   const [line2, setLine2] = useState('');
   const [centerLines, setCenterLines] = useState(false);
@@ -161,6 +165,18 @@ function MotdEditorContent() {
   // Export format
   const [exportFormat, setExportFormat] = useState<'vanilla' | 'spigot' | 'bungeecord' | 'serverlistplus'>('spigot');
 
+  // Validate URL parameters
+  useEffect(() => {
+    const validation = validateMOTDURLParams(searchParams);
+    if (!validation.valid && validation.error) {
+      toast({
+        title: 'Invalid URL parameter',
+        description: validation.error,
+        variant: 'destructive',
+      });
+    }
+  }, [searchParams, toast]);
+
   // Load MOTD from URL query params if present
   useEffect(() => {
     const motd = searchParams.get('motd');
@@ -173,8 +189,18 @@ function MotdEditorContent() {
         const lines = decoded.split('\n');
         setLine1(lines[0] || '');
         setLine2(lines[1] || '');
+        
+        toast({
+          title: 'MOTD loaded',
+          description: 'Successfully imported MOTD from URL',
+        });
       } catch (error) {
         console.error('Failed to decode MOTD from URL:', error);
+        toast({
+          title: 'Import failed',
+          description: 'Could not decode MOTD from URL. The data may be corrupted.',
+          variant: 'destructive',
+        });
       }
     }
   }, [searchParams]);
