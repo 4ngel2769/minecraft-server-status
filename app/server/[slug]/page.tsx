@@ -159,8 +159,25 @@ export default function ServerPage() {
 
   const fetchServerStatus = useCallback(async (manual: boolean = false, token?: string) => {
     try {
+      // Check cooldown before making request
+      if (cooldownTime > 0 && manual) {
+        setError(`Please wait ${cooldownTime} seconds before checking again`);
+        return;
+      }
+
+      // Check for Turnstile requirement
+      const requiredToken = token || turnstileToken;
+      if (ENABLE_TURNSTILE && !requiredToken) {
+        setShowTurnstile(true);
+        setError('Please complete the verification below');
+        return;
+      }
+
       if (manual) setRefreshing(true);
       else setLoading(true);
+
+      // Record check time
+      ClientCooldown.recordCheck(hostname);
 
       const response = await fetch('/api/server', {
         method: 'POST',
@@ -171,30 +188,36 @@ export default function ServerPage() {
           hostname,
           port: actualPort,
           isBedrock,
-          turnstileToken: token || turnstileToken,
+          turnstileToken: requiredToken,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
+        // Handle rate limit errors
+        if (response.status === 429) {
+          const remaining = data.remainingTime || ClientCooldown.getCooldownSeconds();
+          setCooldownTime(remaining);
+          setShowTurnstile(false);
+          throw new Error(data.message || `Rate limited. Please wait ${remaining} seconds.`);
+        }
         throw new Error(data.message || 'Failed to fetch server status');
       }
 
       setServerData(data);
       setError(null);
-      setShowTurnstile(false); // Hide turnstile on successful request
+      setShowTurnstile(false);
+      
+      // Reset turnstile for next check
+      setTurnstileToken(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch server status');
-      // Show turnstile if rate limited
-      if (err instanceof Error && err.message.includes('rate limit')) {
-        setShowTurnstile(true);
-      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [hostname, actualPort, isBedrock, turnstileToken]);
+  }, [hostname, actualPort, isBedrock, turnstileToken, cooldownTime]);
 
   useEffect(() => {
     fetchServerStatus();
