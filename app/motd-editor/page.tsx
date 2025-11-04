@@ -231,7 +231,7 @@ export default function MotdEditorPage() {
                 MOTD Creator
               </h1>
               <p className="text-lg text-muted-foreground">
-                Design your Minecraft server's Message of the Day
+                Design your Minecraft server&apos;s Message of the Day
               </p>
             </motion.div>
 
